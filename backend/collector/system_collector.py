@@ -2,6 +2,9 @@ import psutil
 import platform
 import socket
 
+from backend.operations import save_metrics
+
+
 def collect_system_info():
     data = {
         "hostname": socket.gethostname(),
@@ -15,5 +18,12 @@ def collect_system_info():
 
     return data
 
+
 if __name__ == "__main__":
-    print(collect_system_info())
+    data = collect_system_info()
+
+    print(data)
+
+    save_metrics(data)
+
+    print("\n✅ Data saved successfully to PostgreSQL.")
