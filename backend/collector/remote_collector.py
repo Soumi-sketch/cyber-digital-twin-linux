@@ -1,4 +1,6 @@
+import os
 import paramiko
+from dotenv import load_dotenv
 
 from backend.operations import save_metrics
 
@@ -8,8 +10,10 @@ from backend.collector.parser import (
     parse_disk
 )
 
-HOST = "192.168.38.145"
-USERNAME = "root"
+load_dotenv()
+
+HOST = os.getenv("HOST")
+USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
 
 
