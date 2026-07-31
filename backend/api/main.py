@@ -54,6 +54,37 @@ def get_metrics():
 
 
 # ============================================================
+# HISTORICAL METRICS
+# ============================================================
+
+@app.get("/metrics/history")
+def get_metrics_history(limit: int = 50):
+
+    with engine.connect() as connection:
+
+        result = connection.execute(text("""
+            SELECT
+                hostname,
+                cpu_usage,
+                memory_usage,
+                disk_usage,
+                collected_at
+            FROM system_metrics
+            ORDER BY collected_at DESC
+            LIMIT :limit;
+        """), {
+            "limit": limit
+        })
+
+        rows = result.mappings().all()
+
+    # Return oldest → newest for graph plotting
+    rows.reverse()
+
+    return rows
+
+
+# ============================================================
 # HOSTS
 # ============================================================
 

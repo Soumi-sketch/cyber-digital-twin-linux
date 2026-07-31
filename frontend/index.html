@@ -7,6 +7,8 @@
 
     <link rel="stylesheet" href="style.css">
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 
 <body>
@@ -16,45 +18,47 @@
     <div id="dashboard">
 
         <div class="card">
-
             <h2>Hostname</h2>
-
             <p id="hostname">Loading...</p>
-
         </div>
 
         <div class="card">
-
             <h2>Status</h2>
-
             <p id="status">Loading...</p>
-
         </div>
 
         <div class="card">
-
             <h2>CPU Usage</h2>
-
             <p id="cpu">Loading...</p>
-
         </div>
 
         <div class="card">
-
             <h2>Memory Usage</h2>
-
             <p id="memory">Loading...</p>
-
         </div>
 
         <div class="card">
-
             <h2>Disk Usage</h2>
-
             <p id="disk">Loading...</p>
-
         </div>
 
+    </div>
+
+    <h2 class="section-title">Historical Monitoring</h2>
+
+    <div class="chart-container">
+        <h2>CPU Usage History</h2>
+        <canvas id="cpuChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Memory Usage History</h2>
+        <canvas id="memoryChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Disk Usage History</h2>
+        <canvas id="diskChart"></canvas>
     </div>
 
     <script src="app.js"></script>
