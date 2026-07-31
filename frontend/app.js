@@ -1,19 +1,58 @@
+console.log("=== CYBER DIGITAL TWIN APP.JS LOADED ===");
+
 async function loadDashboard() {
+    console.log("Calling API...");
 
-    const response = await fetch("http://127.0.0.1:8000/health");
+    try {
+        const response = await fetch(
+            "http://192.168.38.146:8000/health",
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
 
-    const data = await response.json();
+        console.log("API response:", response.status);
 
-    const server = data[0];
+        if (!response.ok) {
+            throw new Error("HTTP error: " + response.status);
+        }
 
-    document.getElementById("hostname").innerText = server.hostname;
-    document.getElementById("status").innerText = server.status;
-    document.getElementById("cpu").innerText = server.cpu_usage + " %";
-    document.getElementById("memory").innerText = server.memory_usage + " %";
-    document.getElementById("disk").innerText = server.disk_usage + " %";
+        const server = await response.json();
+
+        console.log("SERVER DATA:", server);
+
+        document.getElementById("hostname").innerText =
+            server.hostname;
+
+        document.getElementById("status").innerText =
+            server.status;
+
+        document.getElementById("cpu").innerText =
+            server.cpu_usage + " %";
+
+        document.getElementById("memory").innerText =
+            server.memory_usage + " %";
+
+        document.getElementById("disk").innerText =
+            server.disk_usage + " %";
+
+    } catch (error) {
+        console.error("DASHBOARD ERROR:", error);
+
+        document.getElementById("hostname").innerText =
+            "Connection Error";
+
+        document.getElementById("status").innerText =
+            "Offline";
+
+        document.getElementById("cpu").innerText = "--";
+        document.getElementById("memory").innerText = "--";
+        document.getElementById("disk").innerText = "--";
+    }
 }
 
 loadDashboard();
 
-// Refresh every 5 seconds
-setInterval(loadDashboard, 5000);
+setInterval(loadDashboard, 2000);
