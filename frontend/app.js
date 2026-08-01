@@ -16,7 +16,7 @@ async function loadDashboard() {
     try {
 
         const response = await fetch(
-            "http://127.0.0.1:8000/health",
+            "http://192.168.38.146:8000/health",
             {
                 method: "GET",
                 mode: "cors",
@@ -75,7 +75,7 @@ async function loadHistory() {
     try {
 
         const response = await fetch(
-            "http://127.0.0.1:8000/metrics/history?limit=50",
+            "http://192.168.38.146:8000/metrics/history?limit=50",
             {
                 method: "GET",
                 mode: "cors",
@@ -122,6 +122,99 @@ async function loadHistory() {
 
 
 // ============================================================
+// LOAD AI ANOMALIES
+// ============================================================
+
+async function loadAnomalies() {
+
+    console.log("Calling anomaly API...");
+
+    try {
+
+        const response = await fetch(
+            "http://192.168.38.146:8000/anomalies",
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("HTTP error: " + response.status);
+        }
+
+        const anomalies = await response.json();
+
+        console.log("ANOMALY DATA:", anomalies);
+
+        updateAnomaly("cpuAnomaly", anomalies.cpu);
+        updateAnomaly("memoryAnomaly", anomalies.memory);
+        updateAnomaly("diskAnomaly", anomalies.disk);
+
+    } catch (error) {
+
+        console.error("ANOMALY ERROR:", error);
+
+        updateAnomalyError("cpuAnomaly");
+        updateAnomalyError("memoryAnomaly");
+        updateAnomalyError("diskAnomaly");
+    }
+}
+
+
+// ============================================================
+// UPDATE ANOMALY STATUS
+// ============================================================
+
+function updateAnomaly(elementId, result) {
+
+    const element = document.getElementById(elementId);
+
+    if (!element || !result) {
+        return;
+    }
+
+    element.innerText = result.status || result.reason || "Unknown";
+    element.className = "anomaly-status";
+
+    if (result.status === "Normal") {
+
+        element.classList.add("normal");
+
+    } else if (result.status === "Warning") {
+
+        element.classList.add("warning");
+
+    } else if (result.status === "Anomaly") {
+
+        element.classList.add("anomaly");
+
+    } else {
+
+        element.classList.add("unknown");
+    }
+}
+
+
+// ============================================================
+// ANOMALY ERROR
+// ============================================================
+
+function updateAnomalyError(elementId) {
+
+    const element = document.getElementById(elementId);
+
+    if (!element) {
+        return;
+    }
+
+    element.innerText = "Unavailable";
+    element.className = "anomaly-status unknown";
+}
+
+
+// ============================================================
 // CREATE / UPDATE CHARTS
 // ============================================================
 
@@ -144,6 +237,10 @@ function updateCharts(
         diskChart.destroy();
     }
 
+
+    // ========================================================
+    // CPU CHART
+    // ========================================================
 
     cpuChart = new Chart(
         document.getElementById("cpuChart"),
@@ -176,6 +273,10 @@ function updateCharts(
     );
 
 
+    // ========================================================
+    // MEMORY CHART
+    // ========================================================
+
     memoryChart = new Chart(
         document.getElementById("memoryChart"),
         {
@@ -206,6 +307,10 @@ function updateCharts(
         }
     );
 
+
+    // ========================================================
+    // DISK CHART
+    // ========================================================
 
     diskChart = new Chart(
         document.getElementById("diskChart"),
@@ -245,6 +350,7 @@ function updateCharts(
 
 loadDashboard();
 loadHistory();
+loadAnomalies();
 
 
 // ============================================================
@@ -253,3 +359,4 @@ loadHistory();
 
 setInterval(loadDashboard, 5000);
 setInterval(loadHistory, 5000);
+setInterval(loadAnomalies, 5000);

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from backend.database import engine
-
+from backend.ai.anomaly_service import analyze_all_metrics
 
 app = FastAPI(
     title="AI Powered Cyber Digital Twin",
@@ -82,6 +82,14 @@ def get_metrics_history(limit: int = 50):
     rows.reverse()
 
     return rows
+# ============================================================
+# AI ANOMALY DETECTION
+# ============================================================
+
+@app.get("/anomalies")
+def get_anomalies():
+
+    return analyze_all_metrics()
 
 
 # ============================================================

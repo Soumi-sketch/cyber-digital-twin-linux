@@ -15,6 +15,11 @@
 
     <h1>AI Powered Cyber Digital Twin</h1>
 
+
+    <!-- =====================================================
+         CURRENT SYSTEM STATUS
+         ===================================================== -->
+
     <div id="dashboard">
 
         <div class="card">
@@ -44,22 +49,71 @@
 
     </div>
 
+
+    <!-- =====================================================
+         AI ANOMALY DETECTION
+         ===================================================== -->
+
+    <h2 class="section-title">AI Anomaly Detection</h2>
+
+    <div id="anomaly-dashboard">
+
+        <div class="card">
+            <h2>CPU Anomaly</h2>
+            <p id="cpuAnomaly" class="anomaly-status">
+                Loading...
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Memory Anomaly</h2>
+            <p id="memoryAnomaly" class="anomaly-status">
+                Loading...
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>Disk Anomaly</h2>
+            <p id="diskAnomaly" class="anomaly-status">
+                Loading...
+            </p>
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         HISTORICAL MONITORING
+         ===================================================== -->
+
     <h2 class="section-title">Historical Monitoring</h2>
 
     <div class="chart-container">
+
         <h2>CPU Usage History</h2>
+
         <canvas id="cpuChart"></canvas>
+
     </div>
 
+
     <div class="chart-container">
+
         <h2>Memory Usage History</h2>
+
         <canvas id="memoryChart"></canvas>
+
     </div>
 
+
     <div class="chart-container">
+
         <h2>Disk Usage History</h2>
+
         <canvas id="diskChart"></canvas>
+
     </div>
+
 
     <script src="app.js"></script>
 
