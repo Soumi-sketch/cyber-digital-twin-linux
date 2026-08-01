@@ -1,16 +1,21 @@
 import re
 
+
 def parse_cpu(cpu_output):
     """
-    Extract CPU system usage percentage.
-    Example:
-    %Cpu(s): 0.0 us, 7.7 sy, 92.3 id
+    Calculate total CPU usage from top output.
+
+    CPU usage = 100 - idle - iowait
     """
 
-    match = re.search(r'([\d.]+)\s+sy', cpu_output)
+    idle_match = re.search(r'([\d.]+)\s+id', cpu_output)
+    iowait_match = re.search(r'([\d.]+)\s+wa', cpu_output)
 
-    if match:
-        return float(match.group(1))
+    if idle_match:
+        idle = float(idle_match.group(1))
+        iowait = float(iowait_match.group(1)) if iowait_match else 0.0
+
+        return round(100.0 - idle - iowait, 2)
 
     return 0.0
 
