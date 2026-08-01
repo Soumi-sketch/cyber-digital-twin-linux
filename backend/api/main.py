@@ -188,3 +188,28 @@ def get_health():
         "status": status,
         "collected_at": row["collected_at"]
     }
+# ============================================================
+# SSH SECURITY EVENTS
+# ============================================================
+
+@app.get("/ssh/events")
+def get_ssh_events(limit: int = 20):
+
+    with engine.connect() as connection:
+
+        result = connection.execute(text("""
+            SELECT
+                id,
+                event_type,
+                username,
+                source_ip,
+                message,
+                event_time
+            FROM ssh_events
+            ORDER BY event_time DESC
+            LIMIT :limit;
+        """), {
+            "limit": limit
+        })
+
+        return result.mappings().all()

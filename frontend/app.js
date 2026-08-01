@@ -360,3 +360,70 @@ loadAnomalies();
 setInterval(loadDashboard, 5000);
 setInterval(loadHistory, 5000);
 setInterval(loadAnomalies, 5000);
+
+// ============================================================
+// SSH SECURITY EVENTS
+// ============================================================
+
+async function loadSSHEvents() {
+
+    try {
+
+        const response = await fetch(
+            "http://192.168.38.146:8000/ssh/events?limit=20"
+        );
+
+        const events = await response.json();
+
+        const table = document.getElementById("sshEventsTable");
+        const failedLogins = document.getElementById("failedLogins");
+        const successfulLogins = document.getElementById("successfulLogins");
+
+        let failed = 0;
+        let successful = 0;
+
+        table.innerHTML = "";
+
+        events.forEach(event => {
+
+            if (event.event_type === "FAILED_LOGIN") {
+                failed++;
+            }
+
+            if (event.event_type === "SUCCESSFUL_LOGIN") {
+                successful++;
+            }
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${new Date(event.event_time).toLocaleString()}</td>
+                <td>${event.event_type}</td>
+                <td>${event.username}</td>
+                <td>${event.source_ip}</td>
+            `;
+
+            table.appendChild(row);
+        });
+
+        failedLogins.textContent = failed;
+        successfulLogins.textContent = successful;
+
+        if (events.length === 0) {
+            table.innerHTML = `
+                <tr>
+                    <td colspan="4">No SSH events found</td>
+                </tr>
+            `;
+        }
+
+    } catch (error) {
+
+        console.error("SSH event loading failed:", error);
+
+    }
+}
+
+loadSSHEvents();
+
+setInterval(loadSSHEvents, 5000);

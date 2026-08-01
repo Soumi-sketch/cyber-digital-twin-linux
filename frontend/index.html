@@ -113,7 +113,44 @@
         <canvas id="diskChart"></canvas>
 
     </div>
+<!-- =========================================================
+     SSH SECURITY EVENTS
+========================================================= -->
 
+<section class="card">
+    <h2>SSH Security Events</h2>
+
+    <div class="security-summary">
+        <div>
+            <span>Failed Logins</span>
+            <strong id="failedLogins">0</strong>
+        </div>
+
+        <div>
+            <span>Successful Logins</span>
+            <strong id="successfulLogins">0</strong>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Event</th>
+                    <th>Username</th>
+                    <th>Source IP</th>
+                </tr>
+            </thead>
+
+            <tbody id="sshEventsTable">
+                <tr>
+                    <td colspan="4">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
 
     <script src="app.js"></script>
 
