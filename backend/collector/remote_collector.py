@@ -10,23 +10,32 @@ from backend.collector.parser import (
     parse_disk
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 HOST = os.getenv("HOST")
 USERNAME = os.getenv("USERNAME")
 PASSWORD = os.getenv("PASSWORD")
 
 
-def collect_remote_data():
+def create_ssh_client():
 
     client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    client.set_missing_host_key_policy(
+        paramiko.AutoAddPolicy()
+    )
 
     client.connect(
         hostname=HOST,
         username=USERNAME,
-        password=PASSWORD
+        password=PASSWORD,
+        timeout=10
     )
+
+    return client
+
+
+def collect_remote_data(client):
 
     commands = {
         "hostname": "hostname",
@@ -42,10 +51,10 @@ def collect_remote_data():
     raw_data = {}
 
     for key, command in commands.items():
-        stdin, stdout, stderr = client.exec_command(command)
-        raw_data[key] = stdout.read().decode().strip()
 
-    client.close()
+        stdin, stdout, stderr = client.exec_command(command)
+
+        raw_data[key] = stdout.read().decode().strip()
 
     data = {
         "hostname": raw_data["hostname"],
@@ -65,7 +74,3 @@ def collect_remote_data():
     print("✅ Data stored successfully.")
 
     return data
-
-
-if __name__ == "__main__":
-    collect_remote_data()
