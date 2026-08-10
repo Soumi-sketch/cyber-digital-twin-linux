@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from backend.security.risk_engine import analyze_ssh_events
+from backend.security.alert_engine import generate_security_alerts
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -222,3 +223,11 @@ def get_ssh_events(limit: int = 20):
 def security_risk():
 
     return analyze_ssh_events()
+# ============================================================
+# SECURITY ALERT API
+# ============================================================
+
+@app.get("/security/alerts")
+def security_alerts():
+
+    return generate_security_alerts()

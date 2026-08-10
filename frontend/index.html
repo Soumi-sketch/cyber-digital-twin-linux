@@ -121,6 +121,7 @@
     <h2>SSH Security Events</h2>
 
     <div class="security-summary">
+
         <div>
             <span>Failed Logins</span>
             <strong id="failedLogins">0</strong>
@@ -130,28 +131,85 @@
             <span>Successful Logins</span>
             <strong id="successfulLogins">0</strong>
         </div>
+
+        <div>
+            <span>High Risk Events</span>
+            <strong id="highRiskEvents">0</strong>
+        </div>
+
+        <div>
+            <span>Critical Events</span>
+            <strong id="criticalEvents">0</strong>
+        </div>
+
     </div>
 
     <div class="table-container">
+
         <table>
+
             <thead>
                 <tr>
                     <th>Time</th>
                     <th>Event</th>
                     <th>Username</th>
                     <th>Source IP</th>
+                    <th>Risk Score</th>
+                    <th>Risk Level</th>
                 </tr>
             </thead>
 
             <tbody id="sshEventsTable">
+
                 <tr>
-                    <td colspan="4">Loading...</td>
+                    <td colspan="6">Loading...</td>
                 </tr>
+
             </tbody>
+
         </table>
+
     </div>
+
 </section>
 
+
+<!-- =========================================================
+     SECURITY ALERTS
+========================================================= -->
+
+<section class="card">
+
+    <h2>Security Alerts</h2>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Alert</th>
+                    <th>Username</th>
+                    <th>Source IP</th>
+                    <th>Risk Score</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+
+            <tbody id="securityAlertsTable">
+
+                <tr>
+                    <td colspan="6">Loading...</td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</section>
     <script src="app.js"></script>
 
 </body>

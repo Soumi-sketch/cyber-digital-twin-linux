@@ -4,3 +4,4 @@ venv/
 .env
 *.pem
 *.key
+*.backup

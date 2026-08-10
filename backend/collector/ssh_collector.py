@@ -44,7 +44,7 @@ def create_ssh_client():
 def get_ssh_logs(client):
 
     command = (
-        "journalctl -u sshd "
+        "journalctl "
         "--since '1 minute ago' "
         "--no-pager"
     )

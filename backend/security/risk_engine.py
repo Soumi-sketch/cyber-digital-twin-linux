@@ -36,6 +36,9 @@ def calculate_base_risk(event):
 
 def calculate_repeat_bonus(connection, event):
 
+    if event["event_type"] not in ("FAILED_LOGIN", "INVALID_USER"):
+        return 0
+
     source_ip = event["source_ip"]
 
     result = connection.execute(
@@ -48,8 +51,8 @@ def calculate_repeat_bonus(connection, event):
         """),
         {
             "source_ip": source_ip,
-            "time_window": event["event_time"] -
-            __import__("datetime").timedelta(minutes=5)
+            "time_window": event["event_time"]
+            - __import__("datetime").timedelta(minutes=5)
         }
     )
 
