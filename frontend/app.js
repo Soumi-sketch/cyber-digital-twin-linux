@@ -1,5 +1,7 @@
 console.log("=== CYBER DIGITAL TWIN APP.JS LOADED ===");
 
+const API = "http://192.168.38.146:8000";
+
 let cpuChart;
 let memoryChart;
 let diskChart;
@@ -11,12 +13,10 @@ let diskChart;
 
 async function loadDashboard() {
 
-    console.log("Calling health API...");
-
     try {
 
         const response = await fetch(
-            "http://192.168.38.146:8000/health",
+            `${API}/health`,
             {
                 method: "GET",
                 mode: "cors",
@@ -29,8 +29,6 @@ async function loadDashboard() {
         }
 
         const server = await response.json();
-
-        console.log("HEALTH DATA:", server);
 
         document.getElementById("hostname").innerText =
             server.hostname;
@@ -70,12 +68,10 @@ async function loadDashboard() {
 
 async function loadHistory() {
 
-    console.log("Calling history API...");
-
     try {
 
         const response = await fetch(
-            "http://192.168.38.146:8000/metrics/history?limit=50",
+            `${API}/metrics/history?limit=50`,
             {
                 method: "GET",
                 mode: "cors",
@@ -88,8 +84,6 @@ async function loadHistory() {
         }
 
         const history = await response.json();
-
-        console.log("HISTORY DATA:", history);
 
         const labels = history.map(
             item => new Date(item.collected_at).toLocaleTimeString()
@@ -127,12 +121,10 @@ async function loadHistory() {
 
 async function loadAnomalies() {
 
-    console.log("Calling anomaly API...");
-
     try {
 
         const response = await fetch(
-            "http://192.168.38.146:8000/anomalies",
+            `${API}/anomalies`,
             {
                 method: "GET",
                 mode: "cors",
@@ -145,8 +137,6 @@ async function loadAnomalies() {
         }
 
         const anomalies = await response.json();
-
-        console.log("ANOMALY DATA:", anomalies);
 
         updateAnomaly("cpuAnomaly", anomalies.cpu);
         updateAnomaly("memoryAnomaly", anomalies.memory);
@@ -175,7 +165,9 @@ function updateAnomaly(elementId, result) {
         return;
     }
 
-    element.innerText = result.status || result.reason || "Unknown";
+    element.innerText =
+        result.status || result.reason || "Unknown";
+
     element.className = "anomaly-status";
 
     if (result.status === "Normal") {
@@ -238,10 +230,6 @@ function updateCharts(
     }
 
 
-    // ========================================================
-    // CPU CHART
-    // ========================================================
-
     cpuChart = new Chart(
         document.getElementById("cpuChart"),
         {
@@ -273,10 +261,6 @@ function updateCharts(
     );
 
 
-    // ========================================================
-    // MEMORY CHART
-    // ========================================================
-
     memoryChart = new Chart(
         document.getElementById("memoryChart"),
         {
@@ -307,10 +291,6 @@ function updateCharts(
         }
     );
 
-
-    // ========================================================
-    // DISK CHART
-    // ========================================================
 
     diskChart = new Chart(
         document.getElementById("diskChart"),
@@ -345,23 +325,6 @@ function updateCharts(
 
 
 // ============================================================
-// INITIAL LOAD
-// ============================================================
-
-loadDashboard();
-loadHistory();
-loadAnomalies();
-
-
-// ============================================================
-// AUTO REFRESH EVERY 5 SECONDS
-// ============================================================
-
-setInterval(loadDashboard, 5000);
-setInterval(loadHistory, 5000);
-setInterval(loadAnomalies, 5000);
-
-// ============================================================
 // SSH SECURITY EVENTS
 // ============================================================
 
@@ -369,20 +332,94 @@ async function loadSSHEvents() {
 
     try {
 
-        const response = await fetch(
-            "http://192.168.38.146:8000/ssh/events?limit=20"
+        // Get SSH events
+        const eventsResponse = await fetch(
+            `${API}/ssh/events?limit=20`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
         );
 
-        const events = await response.json();
+        if (!eventsResponse.ok) {
+            throw new Error(
+                "SSH events HTTP error: " +
+                eventsResponse.status
+            );
+        }
 
-        const table = document.getElementById("sshEventsTable");
-        const failedLogins = document.getElementById("failedLogins");
-        const successfulLogins = document.getElementById("successfulLogins");
+        const events = await eventsResponse.json();
+
+
+        // Get security alerts
+        const alertsResponse = await fetch(
+            `${API}/security/alerts`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!alertsResponse.ok) {
+            throw new Error(
+                "Security alerts HTTP error: " +
+                alertsResponse.status
+            );
+        }
+
+        const alerts = await alertsResponse.json();
+
+
+        // ====================================================
+        // CREATE ALERT LOOKUP
+        // ====================================================
+
+        const alertMap = new Map();
+
+        alerts.forEach(alert => {
+
+            alertMap.set(
+                alert.event_id,
+                alert
+            );
+
+        });
+
+
+        // ====================================================
+        // HTML ELEMENTS
+        // ====================================================
+
+        const table =
+            document.getElementById("sshEventsTable");
+
+        const failedLogins =
+            document.getElementById("failedLogins");
+
+        const successfulLogins =
+            document.getElementById("successfulLogins");
+
+        const highRiskEvents =
+            document.getElementById("highRiskEvents");
+
+        const criticalEvents =
+            document.getElementById("criticalEvents");
+
+
+        if (!table) {
+            console.error("SSH events table not found");
+            return;
+        }
+
+
+        // ====================================================
+        // COUNTERS
+        // ====================================================
 
         let failed = 0;
         let successful = 0;
-
-        table.innerHTML = "";
 
         events.forEach(event => {
 
@@ -393,43 +430,125 @@ async function loadSSHEvents() {
             if (event.event_type === "SUCCESSFUL_LOGIN") {
                 successful++;
             }
-
-            const row = document.createElement("tr");
-
-            row.innerHTML = `
-                <td>${new Date(event.event_time).toLocaleString()}</td>
-                <td>${event.event_type}</td>
-                <td>${event.username}</td>
-                <td>${event.source_ip}</td>
-            `;
-
-            table.appendChild(row);
         });
 
-        failedLogins.textContent = failed;
-        successfulLogins.textContent = successful;
+
+        if (failedLogins) {
+            failedLogins.textContent = failed;
+        }
+
+        if (successfulLogins) {
+            successfulLogins.textContent = successful;
+        }
+
+
+        const highRiskCount = alerts.filter(
+            alert => alert.alert_level === "HIGH"
+        ).length;
+
+        const criticalCount = alerts.filter(
+            alert => alert.alert_level === "CRITICAL"
+        ).length;
+
+
+        if (highRiskEvents) {
+            highRiskEvents.textContent = highRiskCount;
+        }
+
+        if (criticalEvents) {
+            criticalEvents.textContent = criticalCount;
+        }
+
+
+        // ====================================================
+        // DISPLAY SSH EVENTS
+        // ====================================================
+
+        table.innerHTML = "";
+
 
         if (events.length === 0) {
+
             table.innerHTML = `
                 <tr>
-                    <td colspan="4">No SSH events found</td>
+                    <td colspan="6">
+                        No SSH events found
+                    </td>
                 </tr>
             `;
+
+            return;
         }
+
+
+        events.forEach(event => {
+
+            // Find matching security alert
+            const alert =
+                alertMap.get(event.id);
+
+
+            const riskScore =
+                alert
+                    ? alert.risk_score
+                    : "-";
+
+
+            const riskLevel =
+                alert
+                    ? alert.alert_level
+                    : "-";
+
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+                <td>
+                    ${new Date(
+                        event.event_time
+                    ).toLocaleString()}
+                </td>
+
+                <td>
+                    ${event.event_type}
+                </td>
+
+                <td>
+                    ${event.username}
+                </td>
+
+                <td>
+                    ${event.source_ip}
+                </td>
+
+                <td>
+                    ${riskScore}
+                </td>
+
+                <td>
+                    ${riskLevel}
+                </td>
+            `;
+
+
+            table.appendChild(row);
+
+        });
 
     } catch (error) {
 
-        console.error("SSH event loading failed:", error);
-
+        console.error(
+            "SSH EVENT ERROR:",
+            error
+        );
     }
 }
 
-loadSSHEvents();
-
-setInterval(loadSSHEvents, 5000);
 
 // ============================================================
-// SECURITY ALERTS
+// SECURITY ALERTS TABLE
 // ============================================================
 
 async function loadSecurityAlerts() {
@@ -437,7 +556,7 @@ async function loadSecurityAlerts() {
     try {
 
         const response = await fetch(
-            "http://192.168.38.146:8000/security/alerts",
+            `${API}/security/alerts`,
             {
                 method: "GET",
                 mode: "cors",
@@ -446,72 +565,91 @@ async function loadSecurityAlerts() {
         );
 
         if (!response.ok) {
-            throw new Error("HTTP error: " + response.status);
+            throw new Error(
+                "HTTP error: " +
+                response.status
+            );
         }
 
-        const alerts = await response.json();
+        const alerts =
+            await response.json();
 
-// ========================================================
-// UPDATE SECURITY RISK COUNTERS
-// ========================================================
 
-const highRiskEvents = document.getElementById("highRiskEvents");
-const criticalEvents = document.getElementById("criticalEvents");
-
-const highRiskCount = alerts.filter(
-    alert => alert.alert_level === "HIGH"
-).length;
-
-const criticalCount = alerts.filter(
-    alert => alert.alert_level === "CRITICAL"
-).length;
-
-if (highRiskEvents) {
-    highRiskEvents.textContent = highRiskCount;
-}
-
-if (criticalEvents) {
-    criticalEvents.textContent = criticalCount;
-}
-
-        console.log("SECURITY ALERT DATA:", alerts);
-
-        const table = document.getElementById(
-            "securityAlertsTable"
+        console.log(
+            "SECURITY ALERT DATA:",
+            alerts
         );
 
+
+        const table =
+            document.getElementById(
+                "securityAlertsTable"
+            );
+
+
         if (!table) {
-            console.error("Security alerts table not found");
+            console.error(
+                "Security alerts table not found"
+            );
+
             return;
         }
 
+
         table.innerHTML = "";
+
 
         if (alerts.length === 0) {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="6">No security alerts</td>
+                    <td colspan="6">
+                        No security alerts
+                    </td>
                 </tr>
             `;
 
             return;
         }
 
+
         alerts.forEach(alert => {
 
-            const row = document.createElement("tr");
+            const row =
+                document.createElement("tr");
+
 
             row.innerHTML = `
-                <td>${new Date(alert.event_time).toLocaleString()}</td>
-                <td>${alert.event_type}</td>
-                <td>${alert.username}</td>
-                <td>${alert.source_ip}</td>
-                <td>${alert.risk_score}</td>
-                <td>${alert.reason}</td>
+                <td>
+                    ${new Date(
+                        alert.event_time
+                    ).toLocaleString()}
+                </td>
+
+                <td>
+                    ${alert.event_type}
+                </td>
+
+                <td>
+                    ${alert.username}
+                </td>
+
+                <td>
+                    ${alert.source_ip}
+                </td>
+
+                <td>
+                    ${alert.risk_score}
+                </td>
+
+                <td>
+                    ${alert.reason}
+                </td>
             `;
 
+
             table.appendChild(row);
+
         });
 
     } catch (error) {
@@ -521,9 +659,12 @@ if (criticalEvents) {
             error
         );
 
-        const table = document.getElementById(
-            "securityAlertsTable"
-        );
+
+        const table =
+            document.getElementById(
+                "securityAlertsTable"
+            );
+
 
         if (table) {
 
@@ -539,9 +680,42 @@ if (criticalEvents) {
 }
 
 
-// Initial security alert load
+// ============================================================
+// INITIAL LOAD
+// ============================================================
+
+loadDashboard();
+loadHistory();
+loadAnomalies();
+loadSSHEvents();
 loadSecurityAlerts();
 
 
-// Refresh security alerts every 5 seconds
-setInterval(loadSecurityAlerts, 5000);
+// ============================================================
+// AUTO REFRESH
+// ============================================================
+
+setInterval(
+    loadDashboard,
+    5000
+);
+
+setInterval(
+    loadHistory,
+    5000
+);
+
+setInterval(
+    loadAnomalies,
+    5000
+);
+
+setInterval(
+    loadSSHEvents,
+    5000
+);
+
+setInterval(
+    loadSecurityAlerts,
+    5000
+);
