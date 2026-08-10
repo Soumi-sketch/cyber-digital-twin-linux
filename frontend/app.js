@@ -427,3 +427,121 @@ async function loadSSHEvents() {
 loadSSHEvents();
 
 setInterval(loadSSHEvents, 5000);
+
+// ============================================================
+// SECURITY ALERTS
+// ============================================================
+
+async function loadSecurityAlerts() {
+
+    try {
+
+        const response = await fetch(
+            "http://192.168.38.146:8000/security/alerts",
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("HTTP error: " + response.status);
+        }
+
+        const alerts = await response.json();
+
+// ========================================================
+// UPDATE SECURITY RISK COUNTERS
+// ========================================================
+
+const highRiskEvents = document.getElementById("highRiskEvents");
+const criticalEvents = document.getElementById("criticalEvents");
+
+const highRiskCount = alerts.filter(
+    alert => alert.alert_level === "HIGH"
+).length;
+
+const criticalCount = alerts.filter(
+    alert => alert.alert_level === "CRITICAL"
+).length;
+
+if (highRiskEvents) {
+    highRiskEvents.textContent = highRiskCount;
+}
+
+if (criticalEvents) {
+    criticalEvents.textContent = criticalCount;
+}
+
+        console.log("SECURITY ALERT DATA:", alerts);
+
+        const table = document.getElementById(
+            "securityAlertsTable"
+        );
+
+        if (!table) {
+            console.error("Security alerts table not found");
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (alerts.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6">No security alerts</td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        alerts.forEach(alert => {
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${new Date(alert.event_time).toLocaleString()}</td>
+                <td>${alert.event_type}</td>
+                <td>${alert.username}</td>
+                <td>${alert.source_ip}</td>
+                <td>${alert.risk_score}</td>
+                <td>${alert.reason}</td>
+            `;
+
+            table.appendChild(row);
+        });
+
+    } catch (error) {
+
+        console.error(
+            "SECURITY ALERT ERROR:",
+            error
+        );
+
+        const table = document.getElementById(
+            "securityAlertsTable"
+        );
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        Unable to load security alerts
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+
+// Initial security alert load
+loadSecurityAlerts();
+
+
+// Refresh security alerts every 5 seconds
+setInterval(loadSecurityAlerts, 5000);
