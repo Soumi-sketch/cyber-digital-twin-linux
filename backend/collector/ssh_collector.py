@@ -2,6 +2,7 @@ import os
 import re
 import paramiko
 
+from datetime import datetime
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -61,10 +62,44 @@ def get_ssh_logs(client):
 
 
 # ============================================================
+# PARSE JOURNAL TIMESTAMP
+# ============================================================
+
+def parse_event_time(line):
+
+    match = re.match(
+        r"^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})",
+        line
+    )
+
+    if not match:
+        return None
+
+    month = match.group(1)
+    day = match.group(2)
+    time_part = match.group(3)
+
+    current_year = datetime.now().year
+
+    try:
+
+        return datetime.strptime(
+            f"{current_year} {month} {day} {time_part}",
+            "%Y %b %d %H:%M:%S"
+        )
+
+    except ValueError:
+
+        return None
+
+
+# ============================================================
 # PARSE SSH EVENT
 # ============================================================
 
 def parse_ssh_event(line):
+
+    event_time = parse_event_time(line)
 
     # --------------------------------------------------------
     # INVALID USER
@@ -83,7 +118,8 @@ def parse_ssh_event(line):
                 "event_type": "INVALID_USER",
                 "username": match.group(1),
                 "source_ip": match.group(2),
-                "message": line
+                "message": line,
+                "event_time": event_time
             }
 
     # --------------------------------------------------------
@@ -103,7 +139,8 @@ def parse_ssh_event(line):
                 "event_type": "FAILED_LOGIN",
                 "username": match.group(1),
                 "source_ip": match.group(2),
-                "message": line
+                "message": line,
+                "event_time": event_time
             }
 
     # --------------------------------------------------------
@@ -123,7 +160,8 @@ def parse_ssh_event(line):
                 "event_type": "SUCCESSFUL_LOGIN",
                 "username": match.group(1),
                 "source_ip": match.group(2),
-                "message": line
+                "message": line,
+                "event_time": event_time
             }
 
     return None
@@ -167,14 +205,16 @@ def save_ssh_event(event):
                     event_type,
                     username,
                     source_ip,
-                    message
+                    message,
+                    event_time
                 )
                 VALUES
                 (
                     :event_type,
                     :username,
                     :source_ip,
-                    :message
+                    :message,
+                    COALESCE(:event_time, CURRENT_TIMESTAMP)
                 )
             """),
             event
@@ -198,7 +238,6 @@ def collect_ssh_events(client):
         if not event:
             continue
 
-        # Do NOT filter by username.
         # Every SSH user is monitored.
 
         if event_exists(event["message"]):
