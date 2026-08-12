@@ -1,8 +1,8 @@
 from backend.security.incident_engine import detect_ssh_incidents
+from backend.security.response_engine import generate_response
 from fastapi import FastAPI
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
-from backend.security.incident_engine import detect_ssh_incidents
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
@@ -239,9 +239,19 @@ def security_alerts():
 # ============================================================
 
 @app.get("/security/incidents")
-def security_incidents():
+def get_security_incidents():
 
-    return detect_ssh_incidents()
+    incidents = detect_ssh_incidents()
+
+    for incident in incidents:
+
+        response = generate_response(incident)
+
+        incident["recommended_action"] = response["recommended_action"]
+        incident["response_description"] = response["description"]
+        incident["response_mode"] = response["mode"]
+
+    return incidents
 
 # ============================================================
 # SSH INCIDENT API
