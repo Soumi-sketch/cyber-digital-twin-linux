@@ -28,166 +28,225 @@ def detect_ssh_incidents():
                     'FAILED_LOGIN',
                     'INVALID_USER'
                 )
-                ORDER BY event_time DESC
-                LIMIT 100
+                ORDER BY source_ip ASC, event_time ASC
+                LIMIT 500
             """)
         )
 
         events = result.mappings().all()
 
-
         # ====================================================
-        # GROUP EVENTS BY SOURCE IP
+        # GROUP EVENTS INTO ATTACK BURSTS
         # ====================================================
 
-        processed = set()
-
+        grouped_events = {}
 
         for event in events:
 
-            if event["id"] in processed:
-                continue
-
-
             source_ip = event["source_ip"]
 
-            start_time = event["event_time"]
+            if source_ip not in grouped_events:
+                grouped_events[source_ip] = []
 
-            end_time = (
-                start_time +
-                timedelta(minutes=5)
-            )
+            grouped_events[source_ip].append(event)
 
 
-            # =================================================
-            # FIND RELATED ATTACK EVENTS
-            # =================================================
+        # ====================================================
+        # PROCESS EACH SOURCE IP
+        # ====================================================
 
-            related_result = connection.execute(
-                text("""
-                    SELECT
-                        id,
-                        event_type,
-                        username,
-                        source_ip,
-                        event_time
-                    FROM ssh_events
-                    WHERE source_ip = :source_ip
-                      AND event_type IN (
-                          'FAILED_LOGIN',
-                          'INVALID_USER'
-                      )
-                      AND event_time BETWEEN
-                          :start_time AND :end_time
-                    ORDER BY event_time ASC
-                """),
-                {
-                    "source_ip": source_ip,
-                    "start_time": start_time,
-                    "end_time": end_time
-                }
-            )
+        for source_ip, ip_events in grouped_events.items():
 
-            related_events = (
-                related_result
-                .mappings()
-                .all()
-            )
+            current_incident = []
+
+            previous_time = None
+
+            for event in ip_events:
+
+                event_time = event["event_time"]
 
 
-            # =================================================
-            # ONLY CREATE INCIDENT FOR MULTIPLE ATTEMPTS
-            # =================================================
+                # =================================================
+                # START FIRST INCIDENT
+                # =================================================
 
-            if len(related_events) < 3:
-                continue
+                if not current_incident:
+
+                    current_incident = [event]
+
+                    previous_time = event_time
+
+                    continue
 
 
-            # Mark events as processed
+                # =================================================
+                # CHECK TIME GAP
+                # =================================================
 
-            for related in related_events:
-                processed.add(related["id"])
+                time_gap = event_time - previous_time
 
 
-            # =================================================
-            # COUNT ATTACK TYPES
-            # =================================================
+                # =================================================
+                # SAME ATTACK BURST
+                #
+                # If events are within 5 minutes of each other,
+                # keep them in the same incident.
+                # =================================================
 
-            failed_count = sum(
-                1
-                for item in related_events
-                if item["event_type"] == "FAILED_LOGIN"
-            )
+                if time_gap <= timedelta(minutes=5):
 
-            invalid_count = sum(
-                1
-                for item in related_events
-                if item["event_type"] == "INVALID_USER"
-            )
+                    current_incident.append(event)
+
+                else:
+
+                    # Finish previous incident
+                    if len(current_incident) >= 3:
+
+                        incidents.append(
+                            build_incident(
+                                current_incident,
+                                source_ip
+                            )
+                        )
+
+
+                    # Start new incident
+                    current_incident = [event]
+
+
+                previous_time = event_time
 
 
             # =================================================
-            # DETERMINE SEVERITY
+            # PROCESS FINAL INCIDENT
             # =================================================
 
-            total_attempts = len(related_events)
+            if len(current_incident) >= 3:
+
+                incidents.append(
+                    build_incident(
+                        current_incident,
+                        source_ip
+                    )
+                )
 
 
-            if total_attempts >= 10:
+    # ========================================================
+    # NEWEST INCIDENTS FIRST
+    # ========================================================
 
-                severity = "CRITICAL"
-
-            elif total_attempts >= 5:
-
-                severity = "HIGH"
-
-            else:
-
-                severity = "MEDIUM"
-
-
-            # =================================================
-            # INCIDENT
-            # =================================================
-
-            incidents.append({
-
-                "incident_type":
-                    "SSH_BRUTE_FORCE",
-
-                "severity":
-                    severity,
-
-                "source_ip":
-                    source_ip,
-
-                "username":
-                    event["username"],
-
-                "total_attempts":
-                    total_attempts,
-
-                "failed_logins":
-                    failed_count,
-
-                "invalid_users":
-                    invalid_count,
-
-                "start_time":
-                    related_events[0]["event_time"],
-
-                "end_time":
-                    related_events[-1]["event_time"],
-
-                "event_ids":
-                    [
-                        item["id"]
-                        for item in related_events
-                    ]
-            })
+    incidents.sort(
+        key=lambda incident: incident["end_time"],
+        reverse=True
+    )
 
 
     return incidents
+
+
+# ============================================================
+# BUILD INCIDENT
+# ============================================================
+
+def build_incident(events, source_ip):
+
+    failed_count = sum(
+        1
+        for event in events
+        if event["event_type"] == "FAILED_LOGIN"
+    )
+
+
+    invalid_count = sum(
+        1
+        for event in events
+        if event["event_type"] == "INVALID_USER"
+    )
+
+
+    total_attempts = len(events)
+
+
+    # ========================================================
+    # DETERMINE SEVERITY
+    # ========================================================
+
+    if total_attempts >= 10:
+
+        severity = "CRITICAL"
+
+    elif total_attempts >= 5:
+
+        severity = "HIGH"
+
+    else:
+
+        severity = "MEDIUM"
+
+
+    # ========================================================
+    # DETERMINE USERNAME
+    # ========================================================
+
+    usernames = {
+        event["username"]
+        for event in events
+        if event["username"]
+    }
+
+
+    if len(usernames) == 1:
+
+        username = next(iter(usernames))
+
+    elif len(usernames) > 1:
+
+        username = "MULTIPLE"
+
+    else:
+
+        username = "UNKNOWN"
+
+
+    # ========================================================
+    # CREATE INCIDENT
+    # ========================================================
+
+    return {
+
+        "incident_type":
+            "SSH_BRUTE_FORCE",
+
+        "severity":
+            severity,
+
+        "source_ip":
+            source_ip,
+
+        "username":
+            username,
+
+        "total_attempts":
+            total_attempts,
+
+        "failed_logins":
+            failed_count,
+
+        "invalid_users":
+            invalid_count,
+
+        "start_time":
+            events[0]["event_time"],
+
+        "end_time":
+            events[-1]["event_time"],
+
+        "event_ids":
+            [
+                event["id"]
+                for event in events
+            ]
+    }
 
 
 # ============================================================

@@ -1,3 +1,4 @@
+from backend.security.incident_engine import detect_ssh_incidents
 from fastapi import FastAPI
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
@@ -235,6 +236,15 @@ def security_alerts():
 
 # ============================================================
 # SECURITY INCIDENT API
+# ============================================================
+
+@app.get("/security/incidents")
+def security_incidents():
+
+    return detect_ssh_incidents()
+
+# ============================================================
+# SSH INCIDENT API
 # ============================================================
 
 @app.get("/security/incidents")

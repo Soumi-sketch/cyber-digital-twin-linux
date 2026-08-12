@@ -190,16 +190,16 @@ def analyze_ssh_events():
 
         for event in events:
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # BASE RISK
-            # --------------------------------------------
+            # ------------------------------------------------
 
             base_score = calculate_base_risk(event)
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # REPEATED ATTACK BONUS
-            # --------------------------------------------
+            # ------------------------------------------------
 
             repeat_bonus = calculate_repeat_bonus(
                 connection,
@@ -207,16 +207,16 @@ def analyze_ssh_events():
             )
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # TOTAL RISK
-            # --------------------------------------------
+            # ------------------------------------------------
 
             total_score = base_score + repeat_bonus
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # BRUTE FORCE DETECTION
-            # --------------------------------------------
+            # ------------------------------------------------
 
             brute_force = detect_bruteforce(
                 connection,
@@ -225,9 +225,9 @@ def analyze_ssh_events():
             )
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # ATTACK TYPE
-            # --------------------------------------------
+            # ------------------------------------------------
 
             attack_type = None
 
@@ -235,30 +235,25 @@ def analyze_ssh_events():
                 attack_type = brute_force["attack_type"]
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # RISK LEVEL
-            # --------------------------------------------
+            # ------------------------------------------------
 
             risk_level = get_risk_level(total_score)
 
             if brute_force["severity"] == "CRITICAL":
-
                 risk_level = "CRITICAL"
 
             elif (
                 brute_force["severity"] == "HIGH"
-                and risk_level in (
-                    "LOW",
-                    "MEDIUM"
-                )
+                and risk_level in ("LOW", "MEDIUM")
             ):
-
                 risk_level = "HIGH"
 
 
-            # --------------------------------------------
+            # ------------------------------------------------
             # STORE ANALYSIS
-            # --------------------------------------------
+            # ------------------------------------------------
 
             analyzed_events.append({
 
@@ -288,21 +283,16 @@ def analyze_ssh_events():
                 "risk_level":
                     risk_level,
 
-                "attack_detected":
-                    brute_force["attack_detected"],
-
                 "attack_type":
                     attack_type,
 
-                "attack_severity":
-                    brute_force["severity"],
-
-                "attack_attempts":
+                "bruteforce_attempts":
                     brute_force["attempts"]
+
             })
 
 
-    return analyzed_events
+        return analyzed_events
 
 
 # ============================================================
@@ -320,7 +310,9 @@ def show_risk_summary():
     if not events:
 
         print("No SSH events found.")
+
         return
+
 
     for event in events:
 
@@ -334,8 +326,9 @@ def show_risk_summary():
             f"score={event['risk_score']} | "
             f"risk={event['risk_level']} | "
             f"attack={event['attack_type']} | "
-            f"attempts={event['attack_attempts']}"
+            f"attempts={event['bruteforce_attempts']}"
         )
+
 
     print(
         "\n========================================================\n"
