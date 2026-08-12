@@ -689,7 +689,7 @@ loadHistory();
 loadAnomalies();
 loadSSHEvents();
 loadSecurityAlerts();
-
+loadSecurityIncidents();
 
 // ============================================================
 // AUTO REFRESH
@@ -719,3 +719,159 @@ setInterval(
     loadSecurityAlerts,
     5000
 );
+
+setInterval(
+    loadSecurityIncidents,
+    5000
+);
+
+// ============================================================
+// SECURITY INCIDENTS
+// ============================================================
+
+async function loadSecurityIncidents() {
+
+    try {
+
+        const response = await fetch(
+            `${API}/security/incidents`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Security incidents HTTP error: " +
+                response.status
+            );
+
+        }
+
+        const incidents =
+            await response.json();
+
+        console.log(
+            "SECURITY INCIDENT DATA:",
+            incidents
+        );
+
+
+        const table =
+            document.getElementById(
+                "securityIncidentsTable"
+            );
+
+
+        if (!table) {
+
+            console.error(
+                "Security incidents table not found"
+            );
+
+            return;
+        }
+
+
+        table.innerHTML = "";
+
+
+        if (incidents.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        No security incidents detected
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        incidents.forEach(incident => {
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+                <td>
+                    ${incident.severity}
+                </td>
+
+                <td>
+                    ${incident.incident_type}
+                </td>
+
+                <td>
+                    ${incident.username}
+                </td>
+
+                <td>
+                    ${incident.source_ip}
+                </td>
+
+                <td>
+                    ${incident.total_attempts}
+                </td>
+
+                <td>
+                    ${incident.failed_logins}
+                </td>
+
+                <td>
+                    ${incident.invalid_users}
+                </td>
+
+                <td>
+                    ${new Date(
+                        incident.start_time
+                    ).toLocaleString()}
+                </td>
+
+                <td>
+                    ${new Date(
+                        incident.end_time
+                    ).toLocaleString()}
+                </td>
+            `;
+
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "SECURITY INCIDENT ERROR:",
+            error
+        );
+
+
+        const table =
+            document.getElementById(
+                "securityIncidentsTable"
+            );
+
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="9">
+                        Unable to load security incidents
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
