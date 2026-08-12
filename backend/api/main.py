@@ -1,5 +1,6 @@
 from backend.security.incident_engine import detect_ssh_incidents
 from backend.security.response_engine import generate_response
+from backend.security.response_executor import execute_response
 from fastapi import FastAPI
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
@@ -225,6 +226,7 @@ def get_ssh_events(limit: int = 20):
 def security_risk():
 
     return analyze_ssh_events()
+
 # ============================================================
 # SECURITY ALERT API
 # ============================================================
@@ -254,10 +256,40 @@ def get_security_incidents():
     return incidents
 
 # ============================================================
-# SSH INCIDENT API
+# SECURITY RESPONSE EXECUTION API
 # ============================================================
 
-@app.get("/security/incidents")
-def security_incidents():
+@app.get("/security/responses")
+def security_responses():
 
-    return detect_ssh_incidents()
+    incidents = detect_ssh_incidents()
+
+    responses = []
+
+    for incident in incidents:
+
+        recommendation = generate_response(incident)
+
+        incident["recommended_action"] = (
+            recommendation["recommended_action"]
+        )
+
+        execution = execute_response(incident)
+
+        responses.append({
+            "incident_type": incident["incident_type"],
+            "severity": incident["severity"],
+            "source_ip": incident["source_ip"],
+            "recommended_action":
+                recommendation["recommended_action"],
+            "response_description":
+                recommendation["description"],
+            "execution_mode":
+                execution["mode"],
+            "executed":
+                execution["executed"],
+            "execution_message":
+                execution["message"]
+        })
+
+    return responses

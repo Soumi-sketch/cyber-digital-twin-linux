@@ -165,6 +165,7 @@ async function loadAnomalies() {
     }
 }
 
+
 function updateAnomaly(elementId, result) {
 
     const element =
@@ -177,10 +178,6 @@ function updateAnomaly(elementId, result) {
     element.className = "anomaly-status";
 
 
-    // ========================================================
-    // NO HISTORICAL VARIATION / NO DATA
-    // ========================================================
-
     if (result.reason) {
 
         element.innerText =
@@ -192,10 +189,6 @@ function updateAnomaly(elementId, result) {
     }
 
 
-    // ========================================================
-    // USE is_anomaly AS AUTHORITATIVE VALUE
-    // ========================================================
-
     if (result.is_anomaly === true) {
 
         element.innerText =
@@ -206,10 +199,6 @@ function updateAnomaly(elementId, result) {
         return;
     }
 
-
-    // ========================================================
-    // WARNING
-    // ========================================================
 
     if (
         result.score !== undefined &&
@@ -224,10 +213,6 @@ function updateAnomaly(elementId, result) {
         return;
     }
 
-
-    // ========================================================
-    // NORMAL
-    // ========================================================
 
     element.innerText =
         "Normal";
@@ -281,10 +266,6 @@ function updateCharts(
     }
 
 
-    // ========================================================
-    // CPU CHART
-    // ========================================================
-
     cpuChart = new Chart(
         document.getElementById("cpuChart"),
         {
@@ -316,10 +297,6 @@ function updateCharts(
     );
 
 
-    // ========================================================
-    // MEMORY CHART
-    // ========================================================
-
     memoryChart = new Chart(
         document.getElementById("memoryChart"),
         {
@@ -350,10 +327,6 @@ function updateCharts(
         }
     );
 
-
-    // ========================================================
-    // DISK CHART
-    // ========================================================
 
     diskChart = new Chart(
         document.getElementById("diskChart"),
@@ -395,10 +368,6 @@ async function loadSSHEvents() {
 
     try {
 
-        // ----------------------------------------------------
-        // GET SSH EVENTS
-        // ----------------------------------------------------
-
         const eventsResponse =
             await fetch(
                 `${API}/ssh/events?limit=20`,
@@ -420,10 +389,6 @@ async function loadSSHEvents() {
         const events =
             await eventsResponse.json();
 
-
-        // ----------------------------------------------------
-        // GET SECURITY ALERTS
-        // ----------------------------------------------------
 
         const alertsResponse =
             await fetch(
@@ -447,10 +412,6 @@ async function loadSSHEvents() {
             await alertsResponse.json();
 
 
-        // ----------------------------------------------------
-        // CREATE ALERT LOOKUP
-        // ----------------------------------------------------
-
         const alertMap =
             new Map();
 
@@ -463,10 +424,6 @@ async function loadSSHEvents() {
 
         });
 
-
-        // ----------------------------------------------------
-        // HTML ELEMENTS
-        // ----------------------------------------------------
 
         const table =
             document.getElementById(
@@ -495,18 +452,10 @@ async function loadSSHEvents() {
 
 
         if (!table) {
-
-            console.error(
-                "SSH events table not found"
-            );
-
+            console.error("SSH events table not found");
             return;
         }
 
-
-        // ----------------------------------------------------
-        // COUNTERS
-        // ----------------------------------------------------
 
         let failed = 0;
         let successful = 0;
@@ -530,29 +479,25 @@ async function loadSSHEvents() {
 
 
         if (failedLogins) {
-            failedLogins.textContent =
-                failed;
+            failedLogins.textContent = failed;
         }
 
         if (successfulLogins) {
-            successfulLogins.textContent =
-                successful;
+            successfulLogins.textContent = successful;
         }
 
 
         const highRiskCount =
             alerts.filter(
                 alert =>
-                    alert.alert_level ===
-                    "HIGH"
+                    alert.alert_level === "HIGH"
             ).length;
 
 
         const criticalCount =
             alerts.filter(
                 alert =>
-                    alert.alert_level ===
-                    "CRITICAL"
+                    alert.alert_level === "CRITICAL"
             ).length;
 
 
@@ -566,10 +511,6 @@ async function loadSSHEvents() {
                 criticalCount;
         }
 
-
-        // ----------------------------------------------------
-        // DISPLAY SSH EVENTS
-        // ----------------------------------------------------
 
         table.innerHTML = "";
 
@@ -593,12 +534,10 @@ async function loadSSHEvents() {
             const alert =
                 alertMap.get(event.id);
 
-
             const riskScore =
                 alert
                     ? alert.risk_score
                     : "-";
-
 
             const riskLevel =
                 alert
@@ -607,9 +546,7 @@ async function loadSSHEvents() {
 
 
             const row =
-                document.createElement(
-                    "tr"
-                );
+                document.createElement("tr");
 
 
             row.innerHTML = `
@@ -656,7 +593,7 @@ async function loadSSHEvents() {
 
 
 // ============================================================
-// SECURITY ALERTS TABLE
+// SECURITY ALERTS
 // ============================================================
 
 async function loadSecurityAlerts() {
@@ -687,12 +624,6 @@ async function loadSecurityAlerts() {
             await response.json();
 
 
-        console.log(
-            "SECURITY ALERT DATA:",
-            alerts
-        );
-
-
         const table =
             document.getElementById(
                 "securityAlertsTable"
@@ -700,7 +631,6 @@ async function loadSecurityAlerts() {
 
 
         if (!table) {
-
             console.error(
                 "Security alerts table not found"
             );
@@ -729,9 +659,7 @@ async function loadSecurityAlerts() {
         alerts.forEach(alert => {
 
             const row =
-                document.createElement(
-                    "tr"
-                );
+                document.createElement("tr");
 
 
             row.innerHTML = `
@@ -773,24 +701,6 @@ async function loadSecurityAlerts() {
             "SECURITY ALERT ERROR:",
             error
         );
-
-
-        const table =
-            document.getElementById(
-                "securityAlertsTable"
-            );
-
-
-        if (table) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        Unable to load security alerts
-                    </td>
-                </tr>
-            `;
-        }
     }
 }
 
@@ -825,12 +735,6 @@ async function loadSecurityIncidents() {
 
         const incidents =
             await response.json();
-
-
-        console.log(
-            "SECURITY INCIDENT DATA:",
-            incidents
-        );
 
 
         const table =
@@ -869,39 +773,23 @@ async function loadSecurityIncidents() {
         incidents.forEach(incident => {
 
             const row =
-                document.createElement(
-                    "tr"
-                );
+                document.createElement("tr");
 
 
             row.innerHTML = `
-                <td>
-                    ${incident.severity}
-                </td>
+                <td>${incident.severity}</td>
 
-                <td>
-                    ${incident.incident_type}
-                </td>
+                <td>${incident.incident_type}</td>
 
-                <td>
-                    ${incident.username}
-                </td>
+                <td>${incident.username}</td>
 
-                <td>
-                    ${incident.source_ip}
-                </td>
+                <td>${incident.source_ip}</td>
 
-                <td>
-                    ${incident.total_attempts}
-                </td>
+                <td>${incident.total_attempts}</td>
 
-                <td>
-                    ${incident.failed_logins}
-                </td>
+                <td>${incident.failed_logins}</td>
 
-                <td>
-                    ${incident.invalid_users}
-                </td>
+                <td>${incident.invalid_users}</td>
 
                 <td>
                     ${new Date(
@@ -927,11 +815,237 @@ async function loadSecurityIncidents() {
             "SECURITY INCIDENT ERROR:",
             error
         );
+    }
+}
+
+
+// ============================================================
+// SECURITY RESPONSE RECOMMENDATIONS
+// ============================================================
+
+async function loadSecurityResponses() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/security/incidents`,
+                {
+                    method: "GET",
+                    mode: "cors",
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Security response HTTP error: " +
+                response.status
+            );
+        }
+
+
+        const incidents =
+            await response.json();
 
 
         const table =
             document.getElementById(
-                "securityIncidentsTable"
+                "securityResponses"
+            );
+
+
+        if (!table) {
+
+            console.error(
+                "Security response table not found"
+            );
+
+            return;
+        }
+
+
+        table.innerHTML = "";
+
+
+        if (incidents.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        No security response recommendations
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        incidents.forEach(incident => {
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+                <td>${incident.severity}</td>
+
+                <td>${incident.incident_type}</td>
+
+                <td>${incident.source_ip}</td>
+
+                <td>
+                    ${incident.recommended_action || "-"}
+                </td>
+
+                <td>
+                    ${incident.response_description || "-"}
+                </td>
+
+                <td>
+                    ${incident.response_mode || "-"}
+                </td>
+            `;
+
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "SECURITY RESPONSE ERROR:",
+            error
+        );
+    }
+}
+
+
+// ============================================================
+// SECURITY RESPONSE EXECUTION
+// ============================================================
+
+async function loadResponseExecution() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/security/responses`,
+                {
+                    method: "GET",
+                    mode: "cors",
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Response execution HTTP error: " +
+                response.status
+            );
+        }
+
+
+        const responses =
+            await response.json();
+
+
+        console.log(
+            "SECURITY RESPONSE EXECUTION DATA:",
+            responses
+        );
+
+
+        const table =
+            document.getElementById(
+                "responseExecution"
+            );
+
+
+        if (!table) {
+
+            console.error(
+                "Response execution table not found"
+            );
+
+            return;
+        }
+
+
+        table.innerHTML = "";
+
+
+        if (responses.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        No response actions available
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+
+        responses.forEach(responseData => {
+
+            const row =
+                document.createElement("tr");
+
+
+            row.innerHTML = `
+                <td>
+                    ${responseData.severity}
+                </td>
+
+                <td>
+                    ${responseData.recommended_action}
+                </td>
+
+                <td>
+                    ${responseData.source_ip}
+                </td>
+
+                <td>
+                    ${responseData.execution_mode}
+                </td>
+
+                <td>
+                    ${responseData.executed
+                        ? "YES"
+                        : "NO"}
+                </td>
+
+                <td>
+                    ${responseData.execution_message}
+                </td>
+            `;
+
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "RESPONSE EXECUTION ERROR:",
+            error
+        );
+
+
+        const table =
+            document.getElementById(
+                "responseExecution"
             );
 
 
@@ -939,8 +1053,8 @@ async function loadSecurityIncidents() {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="9">
-                        Unable to load security incidents
+                    <td colspan="6">
+                        Unable to load response execution data
                     </td>
                 </tr>
             `;
@@ -960,264 +1074,8 @@ loadSSHEvents();
 loadSecurityAlerts();
 loadSecurityIncidents();
 loadSecurityResponses();
+loadResponseExecution();
 
-// ============================================================
-// SECURITY RESPONSE RECOMMENDATIONS
-// ============================================================
-
-async function loadSecurityResponses() {
-
-    try {
-
-        const response = await fetch(
-            `${API}/security/incidents`,
-            {
-                method: "GET",
-                mode: "cors",
-                cache: "no-store"
-            }
-        );
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Security response HTTP error: " +
-                response.status
-            );
-
-        }
-
-        const incidents =
-            await response.json();
-
-        console.log(
-            "SECURITY RESPONSE DATA:",
-            incidents
-        );
-
-
-        const table =
-            document.getElementById(
-                "securityResponses"
-            );
-
-
-        if (!table) {
-
-            console.error(
-                "Security response table not found"
-            );
-
-            return;
-        }
-
-
-        table.innerHTML = "";
-
-
-        if (incidents.length === 0) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        No security response recommendations
-                    </td>
-                </tr>
-            `;
-
-            return;
-        }
-
-
-        incidents.forEach(incident => {
-
-            const row =
-                document.createElement("tr");
-
-
-            row.innerHTML = `
-                <td>
-                    ${incident.severity}
-                </td>
-
-                <td>
-                    ${incident.incident_type}
-                </td>
-
-                <td>
-                    ${incident.source_ip}
-                </td>
-
-                <td>
-                    ${incident.recommended_action}
-                </td>
-
-                <td>
-                    ${incident.response_description}
-                </td>
-
-                <td>
-                    ${incident.response_mode}
-                </td>
-            `;
-
-
-            table.appendChild(row);
-
-        });
-
-
-    } catch (error) {
-
-        console.error(
-            "SECURITY RESPONSE ERROR:",
-            error
-        );
-
-
-        const table =
-            document.getElementById(
-                "securityResponses"
-            );
-
-
-        if (table) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        Unable to load security response recommendations
-                    </td>
-                </tr>
-            `;
-
-        }
-
-    }
-}
-
-// ============================================================
-// SECURITY RESPONSE RECOMMENDATIONS
-// ============================================================
-
-async function loadSecurityResponses() {
-
-    try {
-
-        const response = await fetch(
-            `${API}/security/incidents`,
-            {
-                method: "GET",
-                mode: "cors",
-                cache: "no-store"
-            }
-        );
-
-        if (!response.ok) {
-
-            throw new Error(
-                "Security response HTTP error: " +
-                response.status
-            );
-
-        }
-
-        const incidents =
-            await response.json();
-
-        console.log(
-            "SECURITY RESPONSE DATA:",
-            incidents
-        );
-
-        const table =
-            document.getElementById(
-                "securityResponses"
-            );
-
-        if (!table) {
-
-            console.error(
-                "Security response table not found"
-            );
-
-            return;
-        }
-
-        table.innerHTML = "";
-
-        if (incidents.length === 0) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        No security response recommendations
-                    </td>
-                </tr>
-            `;
-
-            return;
-        }
-
-        incidents.forEach(incident => {
-
-            const row =
-                document.createElement("tr");
-
-            row.innerHTML = `
-                <td>
-                    ${incident.severity}
-                </td>
-
-                <td>
-                    ${incident.incident_type}
-                </td>
-
-                <td>
-                    ${incident.source_ip}
-                </td>
-
-                <td>
-                    ${incident.recommended_action || "-"}
-                </td>
-
-                <td>
-                    ${incident.response_description || "-"}
-                </td>
-
-                <td>
-                    ${incident.response_mode || "-"}
-                </td>
-            `;
-
-            table.appendChild(row);
-
-        });
-
-    } catch (error) {
-
-        console.error(
-            "SECURITY RESPONSE ERROR:",
-            error
-        );
-
-        const table =
-            document.getElementById(
-                "securityResponses"
-            );
-
-        if (table) {
-
-            table.innerHTML = `
-                <tr>
-                    <td colspan="6">
-                        Unable to load security recommendations
-                    </td>
-                </tr>
-            `;
-        }
-    }
-}
 
 // ============================================================
 // AUTO REFRESH
@@ -1255,5 +1113,10 @@ setInterval(
 
 setInterval(
     loadSecurityResponses,
+    5000
+);
+
+setInterval(
+    loadResponseExecution,
     5000
 );
