@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from backend.database import engine
 from backend.ai.anomaly_service import analyze_all_metrics
+from backend.ai.security_decision_engine import generate_security_decision
 
 app = FastAPI(
     title="AI Powered Cyber Digital Twin",
@@ -293,3 +294,26 @@ def security_responses():
         })
 
     return responses
+
+# ============================================================
+# AI SECURITY DECISION API
+# ============================================================
+
+@app.get("/security/decisions")
+def security_decisions():
+
+    incidents = detect_ssh_incidents()
+
+    decisions = []
+
+    for incident in incidents:
+
+        decision = generate_security_decision(
+            incident
+        )
+
+        decisions.append(
+            decision
+        )
+
+    return decisions

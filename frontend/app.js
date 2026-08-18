@@ -1319,6 +1319,178 @@ async function loadResponseExecution() {
     }
 }
 
+// ============================================================
+// AI SECURITY INTELLIGENCE
+// ============================================================
+
+async function loadSecurityDecisions() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/security/decisions`,
+                {
+                    method: "GET",
+                    mode: "cors",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Security decisions HTTP ${response.status}`
+            );
+        }
+
+        const decisions =
+            await response.json();
+
+        const table =
+            document.getElementById(
+                "securityDecisionsTable"
+            );
+
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (
+            !Array.isArray(decisions) ||
+            decisions.length === 0
+        ) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        No AI security decisions available
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        decisions.forEach(decision => {
+
+            const row =
+                document.createElement("tr");
+
+            const severity =
+                decision.severity || "-";
+
+            const sourceIP =
+                decision.source_ip || "-";
+
+            const threatScore =
+                decision.threat_score ?? "-";
+
+            const priority =
+                decision.priority || "-";
+
+            const confidenceScore =
+                decision.confidence_score ?? "-";
+
+            const confidenceLevel =
+                decision.confidence_level || "-";
+
+            const securityDecision =
+                decision.decision ||
+                decision.recommended_action ||
+                "-";
+
+            const explanation =
+                decision.explanation || "-";
+
+            const executionMode =
+                decision.execution_mode || "-";
+
+            row.innerHTML = `
+
+                <td>
+                    <strong>
+                        ${severity}
+                    </strong>
+                </td>
+
+                <td>
+                    ${sourceIP}
+                </td>
+
+                <td>
+                    <strong>
+                        ${threatScore}/100
+                    </strong>
+                </td>
+
+                <td>
+                    <strong>
+                        ${priority}
+                    </strong>
+                </td>
+
+                <td>
+                    <strong>
+                        ${confidenceScore}%
+                    </strong>
+                    <br>
+                    <small>
+                        ${confidenceLevel}
+                    </small>
+                </td>
+
+                <td>
+                    <strong>
+                        ${securityDecision}
+                    </strong>
+                </td>
+
+                <td>
+                    ${explanation}
+                </td>
+
+                <td>
+                    ${executionMode}
+                </td>
+
+            `;
+
+            table.appendChild(row);
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "AI SECURITY DECISION ERROR:",
+            error
+        );
+
+        const table =
+            document.getElementById(
+                "securityDecisionsTable"
+            );
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        Unable to load AI security decisions
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
 
 // ============================================================
 // INITIAL LOAD
@@ -1334,7 +1506,7 @@ loadSecurityAlerts();
 loadSecurityIncidents();
 loadSecurityResponses();
 loadResponseExecution();
-
+loadSecurityDecisions();
 
 // ============================================================
 // AUTO REFRESH
@@ -1377,6 +1549,11 @@ setInterval(
 
 setInterval(
     loadResponseExecution,
+    5000
+);
+
+setInterval(
+    loadSecurityDecisions,
     5000
 );
 
