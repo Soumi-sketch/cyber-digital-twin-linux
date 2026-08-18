@@ -25,7 +25,7 @@ async function loadDashboard() {
         );
 
         if (!response.ok) {
-            throw new Error("HTTP error: " + response.status);
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const server = await response.json();
@@ -37,13 +37,13 @@ async function loadDashboard() {
             server.status;
 
         document.getElementById("cpu").innerText =
-            server.cpu_usage + " %";
+            `${server.cpu_usage} %`;
 
         document.getElementById("memory").innerText =
-            server.memory_usage + " %";
+            `${server.memory_usage} %`;
 
         document.getElementById("disk").innerText =
-            server.disk_usage + " %";
+            `${server.disk_usage} %`;
 
     } catch (error) {
 
@@ -80,26 +80,29 @@ async function loadHistory() {
         );
 
         if (!response.ok) {
-            throw new Error("HTTP error: " + response.status);
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const history = await response.json();
 
-        const labels = history.map(
-            item => new Date(
-                item.collected_at
-            ).toLocaleTimeString()
+        const orderedHistory = [...history].reverse();
+
+        const labels = orderedHistory.map(
+            item =>
+                new Date(
+                    item.collected_at
+                ).toLocaleTimeString()
         );
 
-        const cpuData = history.map(
+        const cpuData = orderedHistory.map(
             item => item.cpu_usage
         );
 
-        const memoryData = history.map(
+        const memoryData = orderedHistory.map(
             item => item.memory_usage
         );
 
-        const diskData = history.map(
+        const diskData = orderedHistory.map(
             item => item.disk_usage
         );
 
@@ -135,7 +138,7 @@ async function loadAnomalies() {
         );
 
         if (!response.ok) {
-            throw new Error("HTTP error: " + response.status);
+            throw new Error(`HTTP ${response.status}`);
         }
 
         const anomalies = await response.json();
@@ -177,7 +180,6 @@ function updateAnomaly(elementId, result) {
 
     element.className = "anomaly-status";
 
-
     if (result.reason) {
 
         element.innerText =
@@ -188,7 +190,6 @@ function updateAnomaly(elementId, result) {
         return;
     }
 
-
     if (result.is_anomaly === true) {
 
         element.innerText =
@@ -198,7 +199,6 @@ function updateAnomaly(elementId, result) {
 
         return;
     }
-
 
     if (
         result.score !== undefined &&
@@ -213,17 +213,12 @@ function updateAnomaly(elementId, result) {
         return;
     }
 
-
     element.innerText =
         "Normal";
 
     element.classList.add("normal");
 }
 
-
-// ============================================================
-// ANOMALY ERROR
-// ============================================================
 
 function updateAnomalyError(elementId) {
 
@@ -265,7 +260,6 @@ function updateCharts(
         diskChart.destroy();
     }
 
-
     cpuChart = new Chart(
         document.getElementById("cpuChart"),
         {
@@ -296,7 +290,6 @@ function updateCharts(
         }
     );
 
-
     memoryChart = new Chart(
         document.getElementById("memoryChart"),
         {
@@ -326,7 +319,6 @@ function updateCharts(
             }
         }
     );
-
 
     diskChart = new Chart(
         document.getElementById("diskChart"),
@@ -368,21 +360,18 @@ async function loadSSHEvents() {
 
     try {
 
-        const eventsResponse =
-            await fetch(
-                `${API}/ssh/events?limit=20`,
-                {
-                    method: "GET",
-                    mode: "cors",
-                    cache: "no-store"
-                }
-            );
+        const eventsResponse = await fetch(
+            `${API}/ssh/events?limit=20`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
 
         if (!eventsResponse.ok) {
-
             throw new Error(
-                "SSH events HTTP error: " +
-                eventsResponse.status
+                `SSH events HTTP ${eventsResponse.status}`
             );
         }
 
@@ -390,21 +379,18 @@ async function loadSSHEvents() {
             await eventsResponse.json();
 
 
-        const alertsResponse =
-            await fetch(
-                `${API}/security/alerts`,
-                {
-                    method: "GET",
-                    mode: "cors",
-                    cache: "no-store"
-                }
-            );
+        const alertsResponse = await fetch(
+            `${API}/security/alerts`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
 
         if (!alertsResponse.ok) {
-
             throw new Error(
-                "Security alerts HTTP error: " +
-                alertsResponse.status
+                `Security alerts HTTP ${alertsResponse.status}`
             );
         }
 
@@ -412,8 +398,7 @@ async function loadSSHEvents() {
             await alertsResponse.json();
 
 
-        const alertMap =
-            new Map();
+        const alertMap = new Map();
 
         alerts.forEach(alert => {
 
@@ -430,29 +415,8 @@ async function loadSSHEvents() {
                 "sshEventsTable"
             );
 
-        const failedLogins =
-            document.getElementById(
-                "failedLogins"
-            );
-
-        const successfulLogins =
-            document.getElementById(
-                "successfulLogins"
-            );
-
-        const highRiskEvents =
-            document.getElementById(
-                "highRiskEvents"
-            );
-
-        const criticalEvents =
-            document.getElementById(
-                "criticalEvents"
-            );
-
 
         if (!table) {
-            console.error("SSH events table not found");
             return;
         }
 
@@ -475,7 +439,29 @@ async function loadSSHEvents() {
             ) {
                 successful++;
             }
+
         });
+
+
+        const failedLogins =
+            document.getElementById(
+                "failedLogins"
+            );
+
+        const successfulLogins =
+            document.getElementById(
+                "successfulLogins"
+            );
+
+        const highRiskEvents =
+            document.getElementById(
+                "highRiskEvents"
+            );
+
+        const criticalEvents =
+            document.getElementById(
+                "criticalEvents"
+            );
 
 
         if (failedLogins) {
@@ -483,7 +469,8 @@ async function loadSSHEvents() {
         }
 
         if (successfulLogins) {
-            successfulLogins.textContent = successful;
+            successfulLogins.textContent =
+                successful;
         }
 
 
@@ -534,10 +521,12 @@ async function loadSSHEvents() {
             const alert =
                 alertMap.get(event.id);
 
+
             const riskScore =
                 alert
                     ? alert.risk_score
                     : "-";
+
 
             const riskLevel =
                 alert
@@ -561,11 +550,11 @@ async function loadSSHEvents() {
                 </td>
 
                 <td>
-                    ${event.username}
+                    ${event.username || "-"}
                 </td>
 
                 <td>
-                    ${event.source_ip}
+                    ${event.source_ip || "-"}
                 </td>
 
                 <td>
@@ -612,10 +601,8 @@ async function loadSecurityAlerts() {
 
 
         if (!response.ok) {
-
             throw new Error(
-                "HTTP error: " +
-                response.status
+                `HTTP ${response.status}`
             );
         }
 
@@ -631,10 +618,6 @@ async function loadSecurityAlerts() {
 
 
         if (!table) {
-            console.error(
-                "Security alerts table not found"
-            );
-
             return;
         }
 
@@ -674,11 +657,11 @@ async function loadSecurityAlerts() {
                 </td>
 
                 <td>
-                    ${alert.username}
+                    ${alert.username || "-"}
                 </td>
 
                 <td>
-                    ${alert.source_ip}
+                    ${alert.source_ip || "-"}
                 </td>
 
                 <td>
@@ -713,29 +696,40 @@ async function loadSecurityIncidents() {
 
     try {
 
-        const response =
-            await fetch(
-                `${API}/security/incidents`,
-                {
-                    method: "GET",
-                    mode: "cors",
-                    cache: "no-store"
-                }
-            );
+        const response = await fetch(
+            `${API}/security/incidents`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
 
+
+        // ----------------------------------------------------
+        // CHECK HTTP RESPONSE
+        // ----------------------------------------------------
 
         if (!response.ok) {
 
             throw new Error(
-                "Security incidents HTTP error: " +
-                response.status
+                `Security incidents HTTP ${response.status}`
             );
+
         }
 
+
+        // ----------------------------------------------------
+        // READ INCIDENT DATA
+        // ----------------------------------------------------
 
         const incidents =
             await response.json();
 
+
+        // ----------------------------------------------------
+        // FIND INCIDENT TABLE
+        // ----------------------------------------------------
 
         const table =
             document.getElementById(
@@ -746,78 +740,355 @@ async function loadSecurityIncidents() {
         if (!table) {
 
             console.error(
-                "Security incidents table not found"
+                "securityIncidentsTable not found"
             );
 
             return;
+
         }
 
+
+        // Clear old data
 
         table.innerHTML = "";
 
 
-        if (incidents.length === 0) {
+        // ----------------------------------------------------
+        // NO INCIDENTS
+        // ----------------------------------------------------
+
+        if (
+            !Array.isArray(incidents) ||
+            incidents.length === 0
+        ) {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="9">
+                    <td colspan="12">
                         No security incidents detected
                     </td>
                 </tr>
             `;
 
             return;
+
         }
 
 
-        incidents.forEach(incident => {
+        // ----------------------------------------------------
+        // PROCESS EACH INCIDENT
+        // ----------------------------------------------------
 
-            const row =
-                document.createElement("tr");
-
-
-            row.innerHTML = `
-                <td>${incident.severity}</td>
-
-                <td>${incident.incident_type}</td>
-
-                <td>${incident.username}</td>
-
-                <td>${incident.source_ip}</td>
-
-                <td>${incident.total_attempts}</td>
-
-                <td>${incident.failed_logins}</td>
-
-                <td>${incident.invalid_users}</td>
-
-                <td>
-                    ${new Date(
-                        incident.start_time
-                    ).toLocaleString()}
-                </td>
-
-                <td>
-                    ${new Date(
-                        incident.end_time
-                    ).toLocaleString()}
-                </td>
-            `;
+        incidents.forEach(
+            incident => {
 
 
-            table.appendChild(row);
+                // =================================================
+                // ATTACK RATE
+                // =================================================
 
-        });
+                let attackRate = 0;
 
-    } catch (error) {
+
+                if (
+                    incident.attack_rate !== undefined &&
+                    incident.attack_rate !== null
+                ) {
+
+                    attackRate =
+                        Number(
+                            incident.attack_rate
+                        ).toFixed(2);
+
+                }
+
+                else if (
+                    incident.duration_seconds !== undefined &&
+                    incident.duration_seconds > 0
+                ) {
+
+                    attackRate =
+                        (
+                            incident.total_attempts /
+                            (
+                                incident.duration_seconds /
+                                60
+                            )
+                        ).toFixed(2);
+
+                }
+
+                else {
+
+                    attackRate =
+                        incident.total_attempts || 0;
+
+                }
+
+
+                // =================================================
+                // FAILURE RATE
+                // =================================================
+
+                let failureRate = 0;
+
+
+                if (
+                    incident.failure_rate !== undefined &&
+                    incident.failure_rate !== null
+                ) {
+
+                    failureRate =
+                        Number(
+                            incident.failure_rate
+                        ).toFixed(2);
+
+                }
+
+                else if (
+                    incident.total_attempts > 0
+                ) {
+
+                    failureRate =
+                        (
+                            (
+                                incident.failed_logins /
+                                incident.total_attempts
+                            ) * 100
+                        ).toFixed(2);
+
+                }
+
+
+                // =================================================
+                // AI INCIDENT CONFIDENCE
+                // =================================================
+                //
+                // IMPORTANT:
+                //
+                // The confidence is NOT calculated here.
+                //
+                // It comes directly from:
+                //
+                // backend/ai/incident_confidence.py
+                //
+                // Backend API:
+                //
+                // /security/incidents
+                //
+                // Fields:
+                //
+                // confidence_score
+                // confidence_level
+                // confidence_reasons
+                //
+                // =================================================
+
+
+                const confidenceScore =
+                    incident.confidence_score !== undefined
+                        ? incident.confidence_score
+                        : 0;
+
+
+                const confidenceLevel =
+                    incident.confidence_level ||
+                    "UNKNOWN";
+
+
+                const confidenceReasons =
+                    Array.isArray(
+                        incident.confidence_reasons
+                    )
+                        ? incident.confidence_reasons.join(
+                            ", "
+                        )
+                        : "-";
+
+
+                // =================================================
+                // INCIDENT SEVERITY
+                // =================================================
+
+                const severity =
+                    incident.severity ||
+                    "UNKNOWN";
+
+
+                // =================================================
+                // INCIDENT TYPE
+                // =================================================
+
+                const incidentType =
+                    incident.incident_type ||
+                    incident.attack_pattern ||
+                    "-";
+
+
+                // =================================================
+                // USERNAME
+                // =================================================
+
+                const username =
+                    incident.username ||
+                    "-";
+
+
+                // =================================================
+                // SOURCE IP
+                // =================================================
+
+                const sourceIP =
+                    incident.source_ip ||
+                    "-";
+
+
+                // =================================================
+                // CREATE TABLE ROW
+                // =================================================
+
+                const row =
+                    document.createElement("tr");
+
+
+                row.innerHTML = `
+
+                    <td>
+                        <strong>
+                            ${severity}
+                        </strong>
+                    </td>
+
+
+                    <td>
+                        ${incidentType}
+                    </td>
+
+
+                    <td>
+                        ${username}
+                    </td>
+
+
+                    <td>
+                        ${sourceIP}
+                    </td>
+
+
+                    <td>
+                        ${incident.total_attempts ?? 0}
+                    </td>
+
+
+                    <td>
+                        ${incident.failed_logins ?? 0}
+                    </td>
+
+
+                    <td>
+                        ${incident.invalid_users ?? 0}
+                    </td>
+
+
+                    <td>
+                        ${attackRate}
+                    </td>
+
+
+                    <td>
+                        ${failureRate}%
+                    </td>
+
+
+                    <td>
+
+                        <strong>
+                            ${confidenceScore}%
+                        </strong>
+
+                        <br>
+
+                        <span>
+                            ${confidenceLevel}
+                        </span>
+
+                        <br>
+
+                        <small>
+                            ${confidenceReasons}
+                        </small>
+
+                    </td>
+
+
+                    <td>
+                        ${
+                            incident.start_time
+                                ? new Date(
+                                    incident.start_time
+                                  ).toLocaleString()
+                                : "-"
+                        }
+                    </td>
+
+
+                    <td>
+                        ${
+                            incident.end_time
+                                ? new Date(
+                                    incident.end_time
+                                  ).toLocaleString()
+                                : "-"
+                        }
+                    </td>
+
+                `;
+
+
+                // Add row to table
+
+                table.appendChild(row);
+
+            }
+        );
+
+
+    }
+
+    catch (error) {
+
+
+        // =====================================================
+        // ERROR HANDLING
+        // =====================================================
 
         console.error(
             "SECURITY INCIDENT ERROR:",
             error
         );
-    }
-}
 
+
+        const table =
+            document.getElementById(
+                "securityIncidentsTable"
+            );
+
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="12">
+                        Unable to load security incident data
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
 
 // ============================================================
 // SECURITY RESPONSE RECOMMENDATIONS
@@ -841,8 +1112,7 @@ async function loadSecurityResponses() {
         if (!response.ok) {
 
             throw new Error(
-                "Security response HTTP error: " +
-                response.status
+                `Security response HTTP ${response.status}`
             );
         }
 
@@ -858,11 +1128,6 @@ async function loadSecurityResponses() {
 
 
         if (!table) {
-
-            console.error(
-                "Security response table not found"
-            );
-
             return;
         }
 
@@ -891,11 +1156,17 @@ async function loadSecurityResponses() {
 
 
             row.innerHTML = `
-                <td>${incident.severity}</td>
+                <td>
+                    ${incident.severity}
+                </td>
 
-                <td>${incident.incident_type}</td>
+                <td>
+                    ${incident.incident_type}
+                </td>
 
-                <td>${incident.source_ip}</td>
+                <td>
+                    ${incident.source_ip}
+                </td>
 
                 <td>
                     ${incident.recommended_action || "-"}
@@ -947,20 +1218,13 @@ async function loadResponseExecution() {
         if (!response.ok) {
 
             throw new Error(
-                "Response execution HTTP error: " +
-                response.status
+                `Response execution HTTP ${response.status}`
             );
         }
 
 
         const responses =
             await response.json();
-
-
-        console.log(
-            "SECURITY RESPONSE EXECUTION DATA:",
-            responses
-        );
 
 
         const table =
@@ -970,11 +1234,6 @@ async function loadResponseExecution() {
 
 
         if (!table) {
-
-            console.error(
-                "Response execution table not found"
-            );
-
             return;
         }
 
@@ -1020,9 +1279,7 @@ async function loadResponseExecution() {
                 </td>
 
                 <td>
-                    ${responseData.executed
-                        ? "YES"
-                        : "NO"}
+                    ${responseData.executed ? "YES" : "NO"}
                 </td>
 
                 <td>
@@ -1066,6 +1323,8 @@ async function loadResponseExecution() {
 // ============================================================
 // INITIAL LOAD
 // ============================================================
+
+console.log("=== INITIALIZING CYBER DIGITAL TWIN ===");
 
 loadDashboard();
 loadHistory();
@@ -1119,4 +1378,8 @@ setInterval(
 setInterval(
     loadResponseExecution,
     5000
+);
+
+console.log(
+    "=== CYBER DIGITAL TWIN AUTO-REFRESH ENABLED ==="
 );

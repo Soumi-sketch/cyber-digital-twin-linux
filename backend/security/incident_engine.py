@@ -2,11 +2,19 @@ from datetime import timedelta
 
 from sqlalchemy import text
 
+from backend.ai.incident_confidence import calculate_incident_confidence
 from backend.database import engine
 
 
 # ============================================================
-# SSH INCIDENT CORRELATION
+# SSH INCIDENT CORRELATION ENGINE
+# ============================================================
+
+INCIDENT_WINDOW_MINUTES = 5
+
+
+# ============================================================
+# DETECT SSH INCIDENTS
 # ============================================================
 
 def detect_ssh_incidents():
@@ -16,7 +24,8 @@ def detect_ssh_incidents():
     with engine.connect() as connection:
 
         result = connection.execute(
-            text("""
+            text(
+                """
                 SELECT
                     id,
                     event_type,
@@ -30,116 +39,121 @@ def detect_ssh_incidents():
                 )
                 ORDER BY source_ip ASC, event_time ASC
                 LIMIT 500
-            """)
+                """
+            )
         )
 
         events = result.mappings().all()
 
-        # ====================================================
-        # GROUP EVENTS INTO ATTACK BURSTS
-        # ====================================================
+    # ========================================================
+    # GROUP EVENTS BY SOURCE IP
+    # ========================================================
 
-        grouped_events = {}
+    grouped_events = {}
 
-        for event in events:
+    for event in events:
 
-            source_ip = event["source_ip"]
+        source_ip = event["source_ip"]
 
-            if source_ip not in grouped_events:
-                grouped_events[source_ip] = []
+        if not source_ip:
+            continue
 
-            grouped_events[source_ip].append(event)
+        grouped_events.setdefault(
+            source_ip,
+            []
+        ).append(event)
 
+    # ========================================================
+    # CORRELATE ATTACK BURSTS
+    # ========================================================
 
-        # ====================================================
-        # PROCESS EACH SOURCE IP
-        # ====================================================
+    for source_ip, ip_events in grouped_events.items():
 
-        for source_ip, ip_events in grouped_events.items():
+        current_incident = []
+        previous_time = None
 
-            current_incident = []
+        for event in ip_events:
 
-            previous_time = None
+            event_time = event["event_time"]
 
-            for event in ip_events:
+            # ------------------------------------------------
+            # START NEW INCIDENT
+            # ------------------------------------------------
 
-                event_time = event["event_time"]
+            if not current_incident:
 
-
-                # =================================================
-                # START FIRST INCIDENT
-                # =================================================
-
-                if not current_incident:
-
-                    current_incident = [event]
-
-                    previous_time = event_time
-
-                    continue
-
-
-                # =================================================
-                # CHECK TIME GAP
-                # =================================================
-
-                time_gap = event_time - previous_time
-
-
-                # =================================================
-                # SAME ATTACK BURST
-                #
-                # If events are within 5 minutes of each other,
-                # keep them in the same incident.
-                # =================================================
-
-                if time_gap <= timedelta(minutes=5):
-
-                    current_incident.append(event)
-
-                else:
-
-                    # Finish previous incident
-                    if len(current_incident) >= 3:
-
-                        incidents.append(
-                            build_incident(
-                                current_incident,
-                                source_ip
-                            )
-                        )
-
-
-                    # Start new incident
-                    current_incident = [event]
-
-
+                current_incident = [event]
                 previous_time = event_time
 
+                continue
 
-            # =================================================
-            # PROCESS FINAL INCIDENT
-            # =================================================
+            # ------------------------------------------------
+            # CALCULATE TIME GAP
+            # ------------------------------------------------
 
-            if len(current_incident) >= 3:
+            time_gap = (
+                event_time -
+                previous_time
+            )
 
-                incidents.append(
-                    build_incident(
-                        current_incident,
-                        source_ip
-                    )
+            # ------------------------------------------------
+            # SAME ATTACK BURST
+            # ------------------------------------------------
+
+            if (
+                time_gap <=
+                timedelta(
+                    minutes=INCIDENT_WINDOW_MINUTES
                 )
+            ):
 
+                current_incident.append(event)
+
+            else:
+
+                # --------------------------------------------
+                # CLOSE PREVIOUS INCIDENT
+                # --------------------------------------------
+
+                if len(current_incident) >= 3:
+
+                    incidents.append(
+                        build_incident(
+                            current_incident,
+                            source_ip
+                        )
+                    )
+
+                # --------------------------------------------
+                # START NEW INCIDENT
+                # --------------------------------------------
+
+                current_incident = [event]
+
+            previous_time = event_time
+
+        # ====================================================
+        # CLOSE FINAL INCIDENT
+        # ====================================================
+
+        if len(current_incident) >= 3:
+
+            incidents.append(
+                build_incident(
+                    current_incident,
+                    source_ip
+                )
+            )
 
     # ========================================================
     # NEWEST INCIDENTS FIRST
     # ========================================================
 
     incidents.sort(
-        key=lambda incident: incident["end_time"],
+        key=lambda incident:
+            incident["end_time"],
         reverse=True
     )
-
 
     return incidents
 
@@ -150,12 +164,15 @@ def detect_ssh_incidents():
 
 def build_incident(events, source_ip):
 
+    # ========================================================
+    # BASIC COUNTS
+    # ========================================================
+
     failed_count = sum(
         1
         for event in events
         if event["event_type"] == "FAILED_LOGIN"
     )
-
 
     invalid_count = sum(
         1
@@ -163,9 +180,49 @@ def build_incident(events, source_ip):
         if event["event_type"] == "INVALID_USER"
     )
 
-
     total_attempts = len(events)
 
+    # ========================================================
+    # TIME INFORMATION
+    # ========================================================
+
+    start_time = events[0]["event_time"]
+    end_time = events[-1]["event_time"]
+
+    duration_seconds = max(
+        0,
+        int(
+            (
+                end_time - start_time
+            ).total_seconds()
+        )
+    )
+
+    duration_minutes = max(
+        duration_seconds / 60,
+        1 / 60
+    )
+
+    # ========================================================
+    # ATTACK RATE
+    # ========================================================
+
+    attack_rate = round(
+        total_attempts / duration_minutes,
+        2
+    )
+
+    # ========================================================
+    # FAILURE RATE
+    # ========================================================
+
+    failure_rate = round(
+        (
+            failed_count /
+            total_attempts
+        ) * 100,
+        2
+    )
 
     # ========================================================
     # DETERMINE SEVERITY
@@ -183,7 +240,6 @@ def build_incident(events, source_ip):
 
         severity = "MEDIUM"
 
-
     # ========================================================
     # DETERMINE USERNAME
     # ========================================================
@@ -194,10 +250,11 @@ def build_incident(events, source_ip):
         if event["username"]
     }
 
-
     if len(usernames) == 1:
 
-        username = next(iter(usernames))
+        username = next(
+            iter(usernames)
+        )
 
     elif len(usernames) > 1:
 
@@ -207,15 +264,49 @@ def build_incident(events, source_ip):
 
         username = "UNKNOWN"
 
+    # ========================================================
+    # ATTACK PATTERN
+    # ========================================================
+
+    if (
+        failed_count >= 3
+        and attack_rate >= 2
+    ):
+
+        attack_pattern = "SSH_BRUTE_FORCE"
+
+    elif invalid_count >= 3:
+
+        attack_pattern = "INVALID_USER_ENUMERATION"
+
+    else:
+
+        attack_pattern = "SUSPICIOUS_SSH_ACTIVITY"
 
     # ========================================================
-    # CREATE INCIDENT
+    # INCIDENT ID
     # ========================================================
 
-    return {
+    incident_id = (
+        f"SSH-"
+        f"{source_ip.replace('.', '')}-"
+        f"{int(start_time.timestamp())}"
+    )
+
+    # ========================================================
+    # CREATE INCIDENT OBJECT
+    # ========================================================
+
+    incident = {
+
+        "incident_id":
+            incident_id,
 
         "incident_type":
             "SSH_BRUTE_FORCE",
+
+        "attack_pattern":
+            attack_pattern,
 
         "severity":
             severity,
@@ -235,11 +326,20 @@ def build_incident(events, source_ip):
         "invalid_users":
             invalid_count,
 
+        "attack_rate":
+            attack_rate,
+
+        "failure_rate":
+            failure_rate,
+
+        "duration_seconds":
+            duration_seconds,
+
         "start_time":
-            events[0]["event_time"],
+            start_time,
 
         "end_time":
-            events[-1]["event_time"],
+            end_time,
 
         "event_ids":
             [
@@ -247,6 +347,28 @@ def build_incident(events, source_ip):
                 for event in events
             ]
     }
+
+    # ========================================================
+    # AI INCIDENT CONFIDENCE
+    # ========================================================
+
+    confidence = calculate_incident_confidence(
+        incident
+    )
+
+    incident["confidence_score"] = (
+        confidence["confidence_score"]
+    )
+
+    incident["confidence_level"] = (
+        confidence["confidence_level"]
+    )
+
+    incident["confidence_reasons"] = (
+        confidence["reasons"]
+    )
+
+    return incident
 
 
 # ============================================================
@@ -261,26 +383,64 @@ def show_incidents():
         "\n================ SSH INCIDENTS ================\n"
     )
 
-
     if not incidents:
 
-        print("No correlated SSH incidents found.")
+        print(
+            "No correlated SSH incidents found."
+        )
 
         return
-
 
     for incident in incidents:
 
         print(
-            f"🚨 {incident['severity']} | "
-            f"{incident['incident_type']} | "
-            f"IP={incident['source_ip']} | "
-            f"user={incident['username']} | "
-            f"attempts={incident['total_attempts']} | "
-            f"failed={incident['failed_logins']} | "
-            f"invalid={incident['invalid_users']}"
-        )
+            f"\n"
+            f"Incident ID       : "
+            f"{incident['incident_id']}\n"
 
+            f"Severity          : "
+            f"{incident['severity']}\n"
+
+            f"Pattern           : "
+            f"{incident['attack_pattern']}\n"
+
+            f"Source IP         : "
+            f"{incident['source_ip']}\n"
+
+            f"Username          : "
+            f"{incident['username']}\n"
+
+            f"Attempts          : "
+            f"{incident['total_attempts']}\n"
+
+            f"Failed Logins     : "
+            f"{incident['failed_logins']}\n"
+
+            f"Invalid Users     : "
+            f"{incident['invalid_users']}\n"
+
+            f"Attack Rate       : "
+            f"{incident['attack_rate']} attempts/min\n"
+
+            f"Failure Rate      : "
+            f"{incident['failure_rate']}%\n"
+
+            f"Duration          : "
+            f"{incident['duration_seconds']} seconds\n"
+
+            f"Confidence        : "
+            f"{incident['confidence_level']} "
+            f"({incident['confidence_score']}%)\n"
+
+            f"Confidence Reasons: "
+            f"{', '.join(incident['confidence_reasons'])}\n"
+
+            f"Start             : "
+            f"{incident['start_time']}\n"
+
+            f"End               : "
+            f"{incident['end_time']}\n"
+        )
 
     print(
         "\n================================================\n"
@@ -288,7 +448,7 @@ def show_incidents():
 
 
 # ============================================================
-# RUN
+# RUN DIRECTLY
 # ============================================================
 
 if __name__ == "__main__":

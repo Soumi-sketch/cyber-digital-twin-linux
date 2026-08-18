@@ -18,7 +18,7 @@
 
     <!-- =====================================================
          CURRENT SYSTEM STATUS
-         ===================================================== -->
+    ====================================================== -->
 
     <div id="dashboard">
 
@@ -52,7 +52,7 @@
 
     <!-- =====================================================
          AI ANOMALY DETECTION
-         ===================================================== -->
+    ====================================================== -->
 
     <h2 class="section-title">AI Anomaly Detection</h2>
 
@@ -84,7 +84,7 @@
 
     <!-- =====================================================
          HISTORICAL MONITORING
-         ===================================================== -->
+    ====================================================== -->
 
     <h2 class="section-title">Historical Monitoring</h2>
 
@@ -113,185 +113,240 @@
         <canvas id="diskChart"></canvas>
 
     </div>
-<!-- =========================================================
-     SSH SECURITY EVENTS
-========================================================= -->
 
-<section class="card">
-    <h2>SSH Security Events</h2>
 
-    <div class="security-summary">
+    <!-- =====================================================
+         SSH SECURITY EVENTS
+    ====================================================== -->
 
-        <div>
-            <span>Failed Logins</span>
-            <strong id="failedLogins">0</strong>
+    <section class="card">
+
+        <h2>SSH Security Events</h2>
+
+        <div class="security-summary">
+
+            <div>
+                <span>Failed Logins</span>
+                <strong id="failedLogins">0</strong>
+            </div>
+
+            <div>
+                <span>Successful Logins</span>
+                <strong id="successfulLogins">0</strong>
+            </div>
+
+            <div>
+                <span>High Risk Events</span>
+                <strong id="highRiskEvents">0</strong>
+            </div>
+
+            <div>
+                <span>Critical Events</span>
+                <strong id="criticalEvents">0</strong>
+            </div>
+
         </div>
 
-        <div>
-            <span>Successful Logins</span>
-            <strong id="successfulLogins">0</strong>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Time</th>
+                        <th>Event</th>
+                        <th>Username</th>
+                        <th>Source IP</th>
+                        <th>Risk Score</th>
+                        <th>Risk Level</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="sshEventsTable">
+
+                    <tr>
+                        <td colspan="6">Loading...</td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
         </div>
 
-        <div>
-            <span>High Risk Events</span>
-            <strong id="highRiskEvents">0</strong>
+    </section>
+
+
+    <!-- =====================================================
+         SECURITY ALERTS
+    ====================================================== -->
+
+    <section class="card">
+
+        <h2>Security Alerts</h2>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Time</th>
+                        <th>Alert</th>
+                        <th>Username</th>
+                        <th>Source IP</th>
+                        <th>Risk Score</th>
+                        <th>Reason</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="securityAlertsTable">
+
+                    <tr>
+                        <td colspan="6">Loading...</td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
         </div>
 
-        <div>
-            <span>Critical Events</span>
-            <strong id="criticalEvents">0</strong>
+    </section>
+
+
+    <!-- =====================================================
+         SECURITY INCIDENTS
+    ====================================================== -->
+
+    <section class="card">
+
+        <h2>Security Incidents</h2>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+<tr>
+    <th>Severity</th>
+    <th>Incident</th>
+    <th>Username</th>
+    <th>Source IP</th>
+    <th>Attempts</th>
+    <th>Failed</th>
+    <th>Invalid Users</th>
+    <th>Rate/min</th>
+    <th>Failure %</th>
+    <th>Confidence</th>
+    <th>Start Time</th>
+    <th>End Time</th>
+</tr>
+                </thead>
+
+                <tbody id="securityIncidentsTable">
+
+                    <tr>
+                        <td colspan="9">Loading...</td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
         </div>
 
-    </div>
 
-    <div class="table-container">
+        <!-- =================================================
+             SECURITY RESPONSE EXECUTION
+        ================================================== -->
 
-        <table>
+        <h2>Security Response Execution</h2>
 
-            <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>Event</th>
-                    <th>Username</th>
-                    <th>Source IP</th>
-                    <th>Risk Score</th>
-                    <th>Risk Level</th>
-                </tr>
-            </thead>
+        <div class="table-container">
 
-            <tbody id="sshEventsTable">
+            <table>
 
-                <tr>
-                    <td colspan="6">Loading...</td>
-                </tr>
+                <thead>
 
-            </tbody>
+                    <tr>
+                        <th>Severity</th>
+                        <th>Action</th>
+                        <th>Source IP</th>
+                        <th>Mode</th>
+                        <th>Executed</th>
+                        <th>Message</th>
+                    </tr>
 
-        </table>
+                </thead>
 
-    </div>
+                <tbody id="responseExecution">
 
-</section>
+                    <tr>
+                        <td colspan="6">Loading...</td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
 
 
-<!-- =========================================================
-     SECURITY ALERTS
-========================================================= -->
+    <!-- =====================================================
+         SECURITY RESPONSE RECOMMENDATIONS
+    ====================================================== -->
 
-<section class="card">
+    <section class="card">
 
-    <h2>Security Alerts</h2>
+        <h2>Security Response Recommendations</h2>
 
-    <div class="table-container">
+        <div class="table-container">
 
-        <table>
+            <table>
 
-            <thead>
-                <tr>
-                    <th>Time</th>
-                    <th>Alert</th>
-                    <th>Username</th>
-                    <th>Source IP</th>
-                    <th>Risk Score</th>
-                    <th>Reason</th>
-                </tr>
-            </thead>
+                <thead>
 
-            <tbody id="securityAlertsTable">
+                    <tr>
+                        <th>Severity</th>
+                        <th>Incident</th>
+                        <th>Source IP</th>
+                        <th>Recommended Action</th>
+                        <th>Description</th>
+                        <th>Mode</th>
+                    </tr>
 
-                <tr>
-                    <td colspan="6">Loading...</td>
-                </tr>
+                </thead>
 
-            </tbody>
+                <tbody id="securityResponses">
 
-        </table>
+                    <tr>
+                        <td colspan="6">Loading...</td>
+                    </tr>
 
-    </div>
+                </tbody>
 
-</section>
+            </table>
 
-<!-- =========================================================
-     SECURITY INCIDENTS
-========================================================= -->
+        </div>
 
-<section class="card">
+    </section>
 
-    <h2>Security Incidents</h2>
 
-    <div class="table-container">
+    <!-- =====================================================
+         JAVASCRIPT
+    ====================================================== -->
 
-        <table>
-
-            <thead>
-                <tr>
-                    <th>Severity</th>
-                    <th>Incident</th>
-                    <th>Username</th>
-                    <th>Source IP</th>
-                    <th>Attempts</th>
-                    <th>Failed</th>
-                    <th>Invalid Users</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                </tr>
-            </thead>
-
-            <tbody id="securityIncidentsTable">
-
-                <tr>
-                    <td colspan="9">
-                        Loading incidents...
-                    </td>
-                </tr>
-
-            </tbody>
-
-        </table>
-
-<h2>Security Response Execution</h2>
-
-<table>
-    <thead>
-        <tr>
-            <th>Severity</th>
-            <th>Action</th>
-            <th>Source IP</th>
-            <th>Mode</th>
-            <th>Executed</th>
-            <th>Message</th>
-        </tr>
-    </thead>
-
-    <tbody id="responseExecution">
-    </tbody>
-</table>
-
-    </div>
-
-</section>
-
-<h2>Security Response Recommendations</h2>
-
-<table>
-    <thead>
-        <tr>
-            <th>Severity</th>
-            <th>Incident</th>
-            <th>Source IP</th>
-            <th>Recommended Action</th>
-            <th>Description</th>
-            <th>Mode</th>
-        </tr>
-    </thead>
-
-    <tbody id="securityResponses">
-    </tbody>
-</table>
- 
-<script src="app.js?v=2"></script>
+    <script src="app.js?v=2"></script>
 
 </body>
 
 </html>
-
