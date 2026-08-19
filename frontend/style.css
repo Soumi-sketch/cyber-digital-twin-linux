@@ -31,3 +31,240 @@ h1 {
     font-size: 22px;
     font-weight: bold;
 }
+
+root@twin:~/cyber-digital-twin# python -m py_compile backend/api/main.py
+root@twin:~/cyber-digital-twin# python -m py_compile backend/security/response_executor.py
+root@twin:~/cyber-digital-twin# curl -s http://127.0.0.1:8000/security/responses | python -m json.tool
+[
+    {
+        "incident_id": "SSH-19216838146-1787069332",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "HIGH",
+        "source_ip": "192.168.38.146",
+        "threat_score": 83,
+        "priority": "P1",
+        "ai_decision": "BLOCK_SOURCE_IP",
+        "recommended_action": "BLOCK_SOURCE_IP",
+        "explanation": "Source 192.168.38.146 produced a HIGH security incident. The AI calculated a threat score of 83/100 with priority P1. Decision: BLOCK_SOURCE_IP. Evidence: HIGH incident severity; moderate AI confidence (60%); repeated authentication attempts (9); extremely high failure rate (100.0%).",
+        "confidence_score": 60,
+        "confidence_level": "HIGH",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "BLOCK_SOURCE_IP",
+        "execution_message": "Would block source IP 192.168.38.146 using the security response policy"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786560249",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "HIGH",
+        "source_ip": "192.168.38.146",
+        "threat_score": 89,
+        "priority": "P1",
+        "ai_decision": "BLOCK_SOURCE_IP",
+        "recommended_action": "BLOCK_SOURCE_IP",
+        "explanation": "Source 192.168.38.146 produced a HIGH security incident. The AI calculated a threat score of 89/100 with priority P1. Decision: BLOCK_SOURCE_IP. Evidence: HIGH incident severity; moderate AI confidence (60%); repeated authentication attempts (5); extremely high failure rate (100.0%); very high attack rate (12.5 attempts/min).",
+        "confidence_score": 60,
+        "confidence_level": "HIGH",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "BLOCK_SOURCE_IP",
+        "execution_message": "Would block source IP 192.168.38.146 using the security response policy"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786542447",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "MEDIUM",
+        "source_ip": "192.168.38.146",
+        "threat_score": 50,
+        "priority": "P3",
+        "ai_decision": "ENHANCED_MONITORING",
+        "recommended_action": "ENHANCED_MONITORING",
+        "explanation": "Source 192.168.38.146 produced a MEDIUM security incident. The AI calculated a threat score of 50/100 with priority P3. Decision: ENHANCED_MONITORING. Evidence: moderate AI confidence (55%); extremely high failure rate (100.0%).",
+        "confidence_score": 55,
+        "confidence_level": "MEDIUM",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "ENHANCED_MONITORING",
+        "execution_message": "Would increase monitoring and logging for source IP 192.168.38.146"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786383561",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "MEDIUM",
+        "source_ip": "192.168.38.146",
+        "threat_score": 60,
+        "priority": "P2",
+        "ai_decision": "ENHANCED_MONITORING",
+        "recommended_action": "ENHANCED_MONITORING",
+        "explanation": "Source 192.168.38.146 produced a MEDIUM security incident. The AI calculated a threat score of 60/100 with priority P2. Decision: ENHANCED_MONITORING. Evidence: moderate AI confidence (55%); extremely high failure rate (100.0%); very high attack rate (30.0 attempts/min).",
+        "confidence_score": 55,
+        "confidence_level": "MEDIUM",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "ENHANCED_MONITORING",
+        "execution_message": "Would increase monitoring and logging for source IP 192.168.38.146"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786375840",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "MEDIUM",
+        "source_ip": "192.168.38.146",
+        "threat_score": 59,
+        "priority": "P3",
+        "ai_decision": "ENHANCED_MONITORING",
+        "recommended_action": "ENHANCED_MONITORING",
+        "explanation": "Source 192.168.38.146 produced a MEDIUM security incident. The AI calculated a threat score of 59/100 with priority P3. Decision: ENHANCED_MONITORING. Evidence: high failure rate (75.0%); invalid-user activity detected (1); very high attack rate (240.0 attempts/min).",
+        "confidence_score": 38,
+        "confidence_level": "LOW",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "ENHANCED_MONITORING",
+        "execution_message": "Would increase monitoring and logging for source IP 192.168.38.146"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786296366",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "HIGH",
+        "source_ip": "192.168.38.146",
+        "threat_score": 81,
+        "priority": "P1",
+        "ai_decision": "BLOCK_SOURCE_IP",
+        "recommended_action": "BLOCK_SOURCE_IP",
+        "explanation": "Source 192.168.38.146 produced a HIGH security incident. The AI calculated a threat score of 81/100 with priority P1. Decision: BLOCK_SOURCE_IP. Evidence: HIGH incident severity; repeated authentication attempts (5); high failure rate (60.0%); invalid-user activity detected (2); elevated attack rate (7.89 attempts/min).",
+        "confidence_score": 38,
+        "confidence_level": "LOW",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "BLOCK_SOURCE_IP",
+        "execution_message": "Would block source IP 192.168.38.146 using the security response policy"
+    },
+    {
+        "incident_id": "SSH-19216838146-1786294906",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "CRITICAL",
+        "source_ip": "192.168.38.146",
+        "threat_score": 100,
+        "priority": "P1",
+        "ai_decision": "IMMEDIATE_CONTAINMENT",
+        "recommended_action": "IMMEDIATE_CONTAINMENT",
+        "explanation": "Source 192.168.38.146 produced a CRITICAL security incident. The AI calculated a threat score of 100/100 with priority P1. Decision: IMMEDIATE_CONTAINMENT. Evidence: CRITICAL incident severity; high AI confidence (70%); very high authentication activity (10 attempts); extremely high failure rate (100.0%); very high attack rate (600.0 attempts/min).",
+        "confidence_score": 70,
+        "confidence_level": "HIGH",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "IMMEDIATE_CONTAINMENT",
+        "execution_message": "Would immediately contain source IP 192.168.38.146 using the security response policy"
+    },
+    {
+        "incident_id": "SSH-192168381-1786127851",
+        "incident_type": "SSH_BRUTE_FORCE",
+        "severity": "MEDIUM",
+        "source_ip": "192.168.38.1",
+        "threat_score": 50,
+        "priority": "P3",
+        "ai_decision": "ENHANCED_MONITORING",
+        "recommended_action": "ENHANCED_MONITORING",
+        "explanation": "Source 192.168.38.1 produced a MEDIUM security incident. The AI calculated a threat score of 50/100 with priority P3. Decision: ENHANCED_MONITORING. Evidence: high failure rate (66.7%); invalid-user activity detected (1); elevated attack rate (9.47 attempts/min).",
+        "confidence_score": 28,
+        "confidence_level": "LOW",
+        "execution_mode": "DRY-RUN",
+        "executed": false,
+        "execution_action": "ENHANCED_MONITORING",
+        "execution_message": "Would increase monitoring and logging for source IP 192.168.38.1"
+    }
+]
+
+
+/* ============================================================
+   WIDE SECURITY TABLE SUPPORT
+   ============================================================ */
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table-container table {
+    min-width: 1400px;
+    width: max-content;
+    border-collapse: collapse;
+}
+
+.table-container th,
+.table-container td {
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 12px;
+}
+
+.table-container td:last-child,
+.table-container th:last-child {
+    white-space: normal;
+    min-width: 350px;
+    max-width: 500px;
+    overflow-wrap: anywhere;
+}
+
+/* Security Response Execution */
+#responseExecution td:nth-child(1),
+#responseExecution th:nth-child(1) {
+    min-width: 90px;
+}
+
+#responseExecution td:nth-child(2),
+#responseExecution th:nth-child(2) {
+    min-width: 140px;
+}
+
+#responseExecution td:nth-child(3),
+#responseExecution th:nth-child(3) {
+    min-width: 110px;
+}
+
+#responseExecution td:nth-child(4),
+#responseExecution th:nth-child(4) {
+    min-width: 80px;
+}
+
+#responseExecution td:nth-child(5),
+#responseExecution th:nth-child(5) {
+    min-width: 200px;
+}
+
+#responseExecution td:nth-child(6),
+#responseExecution th:nth-child(6) {
+    min-width: 120px;
+}
+
+#responseExecution td:nth-child(7),
+#responseExecution th:nth-child(7) {
+    min-width: 100px;
+}
+
+#responseExecution td:nth-child(8),
+#responseExecution th:nth-child(8) {
+    min-width: 100px;
+}
+
+#responseExecution td:nth-child(9),
+#responseExecution th:nth-child(9) {
+    min-width: 350px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   SECURITY INCIDENTS TABLE
+   ============================================================ */
+
+#securityIncidents td,
+#securityIncidents th {
+    white-space: nowrap;
+}
+
+#securityIncidents td:nth-child(12),
+#securityIncidents th:nth-child(12) {
+    min-width: 250px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

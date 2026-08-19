@@ -1214,7 +1214,6 @@ async function loadResponseExecution() {
                 }
             );
 
-
         if (!response.ok) {
 
             throw new Error(
@@ -1222,31 +1221,29 @@ async function loadResponseExecution() {
             );
         }
 
-
         const responses =
             await response.json();
-
 
         const table =
             document.getElementById(
                 "responseExecution"
             );
 
-
         if (!table) {
             return;
         }
 
-
         table.innerHTML = "";
 
-
-        if (responses.length === 0) {
+        if (
+            !Array.isArray(responses) ||
+            responses.length === 0
+        ) {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="6">
-                        No response actions available
+                    <td colspan="9">
+                        No AI response actions available
                     </td>
                 </tr>
             `;
@@ -1254,39 +1251,98 @@ async function loadResponseExecution() {
             return;
         }
 
-
         responses.forEach(responseData => {
 
             const row =
                 document.createElement("tr");
 
+            const severity =
+                responseData.severity || "-";
+
+            const sourceIP =
+                responseData.source_ip || "-";
+
+            const threatScore =
+                responseData.threat_score ?? "-";
+
+            const priority =
+                responseData.priority || "-";
+
+            const aiDecision =
+                responseData.ai_decision ||
+                responseData.recommended_action ||
+                "-";
+
+            const confidenceScore =
+                responseData.confidence_score ?? "-";
+
+            const confidenceLevel =
+                responseData.confidence_level || "-";
+
+            const executionMode =
+                responseData.execution_mode || "-";
+
+            const executed =
+                responseData.executed ? "YES" : "NO";
+
+            const executionMessage =
+                responseData.execution_message || "-";
 
             row.innerHTML = `
+
                 <td>
-                    ${responseData.severity}
+                    <strong>
+                        ${severity}
+                    </strong>
                 </td>
 
                 <td>
-                    ${responseData.recommended_action}
+                    ${sourceIP}
                 </td>
 
                 <td>
-                    ${responseData.source_ip}
+                    <strong>
+                        ${threatScore}/100
+                    </strong>
                 </td>
 
                 <td>
-                    ${responseData.execution_mode}
+                    <strong>
+                        ${priority}
+                    </strong>
                 </td>
 
                 <td>
-                    ${responseData.executed ? "YES" : "NO"}
+                    <strong>
+                        ${aiDecision}
+                    </strong>
                 </td>
 
                 <td>
-                    ${responseData.execution_message}
+                    <strong>
+                        ${confidenceScore}%
+                    </strong>
+                    <br>
+                    <small>
+                        ${confidenceLevel}
+                    </small>
                 </td>
+
+                <td>
+                    ${executionMode}
+                </td>
+
+                <td>
+                    <strong>
+                        ${executed}
+                    </strong>
+                </td>
+
+                <td>
+                    ${executionMessage}
+                </td>
+
             `;
-
 
             table.appendChild(row);
 
@@ -1299,24 +1355,25 @@ async function loadResponseExecution() {
             error
         );
 
-
         const table =
             document.getElementById(
                 "responseExecution"
             );
 
-
         if (table) {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="6">
-                        Unable to load response execution data
+                    <td colspan="9">
+                        Unable to load AI response execution data
                     </td>
                 </tr>
             `;
+
         }
+
     }
+
 }
 
 // ============================================================

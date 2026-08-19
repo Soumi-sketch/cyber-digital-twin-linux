@@ -257,7 +257,7 @@ def get_security_incidents():
     return incidents
 
 # ============================================================
-# SECURITY RESPONSE EXECUTION API
+# AI SECURITY RESPONSE EXECUTION API
 # ============================================================
 
 @app.get("/security/responses")
@@ -269,28 +269,91 @@ def security_responses():
 
     for incident in incidents:
 
-        recommendation = generate_response(incident)
-
-        incident["recommended_action"] = (
-            recommendation["recommended_action"]
+        # Generate explainable AI security decision
+        decision = generate_security_decision(
+            incident
         )
 
-        execution = execute_response(incident)
+        # Safely simulate response execution
+        execution = execute_response(
+            decision
+        )
 
         responses.append({
-            "incident_type": incident["incident_type"],
-            "severity": incident["severity"],
-            "source_ip": incident["source_ip"],
-            "recommended_action":
-                recommendation["recommended_action"],
-            "response_description":
-                recommendation["description"],
-            "execution_mode":
-                execution["mode"],
-            "executed":
-                execution["executed"],
-            "execution_message":
-                execution["message"]
+
+            "incident_id": decision.get(
+                "incident_id"
+            ),
+
+            "incident_type": decision.get(
+                "incident_type",
+                incident.get("incident_type")
+            ),
+
+            "severity": decision.get(
+                "severity",
+                incident.get("severity")
+            ),
+
+            "source_ip": decision.get(
+                "source_ip",
+                incident.get("source_ip")
+            ),
+
+            "threat_score": decision.get(
+                "threat_score",
+                0
+            ),
+
+            "priority": decision.get(
+                "priority",
+                "P4"
+            ),
+
+            "ai_decision": decision.get(
+                "decision",
+                "UNKNOWN"
+            ),
+
+            "recommended_action": decision.get(
+                "recommended_action",
+                "UNKNOWN"
+            ),
+
+            "explanation": decision.get(
+                "explanation",
+                "-"
+            ),
+
+            "confidence_score": decision.get(
+                "confidence_score",
+                0
+            ),
+
+            "confidence_level": decision.get(
+                "confidence_level",
+                "LOW"
+            ),
+
+            "execution_mode": execution.get(
+                "mode"
+            ),
+
+            "executed": execution.get(
+                "executed",
+                False
+            ),
+
+            "execution_action": execution.get(
+                "action",
+                "UNKNOWN"
+            ),
+
+            "execution_message": execution.get(
+                "message",
+                "-"
+            )
+
         })
 
     return responses
