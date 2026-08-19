@@ -6,14 +6,15 @@
 #
 # Current mode: DRY-RUN
 #
-# This module receives decisions from the AI Security
-# Decision Engine and safely simulates the response.
+# Every response is recorded in PostgreSQL for audit purposes.
 #
 # No firewall, account, or network configuration is modified.
 # ============================================================
 
-
 from datetime import datetime, timezone
+
+from backend.database import SessionLocal
+from backend.models.security_response_audit import SecurityResponseAudit
 
 
 # ============================================================
@@ -41,6 +42,10 @@ def execute_response(decision):
     ENHANCED_MONITORING
     BLOCK_SOURCE_IP
     IMMEDIATE_CONTAINMENT
+    LOG_ONLY
+
+    Every execution is recorded in the
+    security_response_audit PostgreSQL table.
 
     No real security controls are modified.
     """
@@ -69,6 +74,26 @@ def execute_response(decision):
     priority = decision.get(
         "priority",
         "P4"
+    )
+
+    incident_id = decision.get(
+        "incident_id",
+        "UNKNOWN"
+    )
+
+    incident_type = decision.get(
+        "incident_type",
+        "UNKNOWN"
+    )
+
+    confidence_score = decision.get(
+        "confidence_score",
+        0
+    )
+
+    confidence_level = decision.get(
+        "confidence_level",
+        "UNKNOWN"
     )
 
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -147,6 +172,102 @@ def execute_response(decision):
         )
 
     # --------------------------------------------------------
+    # DATABASE AUDIT
+    # --------------------------------------------------------
+
+    audit_saved = False
+    audit_duplicate = False
+
+    db = None
+
+    try:
+
+        db = SessionLocal()
+
+        # ----------------------------------------------------
+        # DUPLICATE PROTECTION
+        # ----------------------------------------------------
+
+        existing_record = (
+            db.query(SecurityResponseAudit)
+            .filter(
+                SecurityResponseAudit.incident_id == incident_id,
+                SecurityResponseAudit.execution_action == action,
+                SecurityResponseAudit.execution_mode == EXECUTION_MODE
+            )
+            .first()
+        )
+
+        if existing_record:
+
+            audit_duplicate = True
+
+            print(
+                f"[AUDIT] Existing record found for "
+                f"incident {incident_id} "
+                f"with action {action}. "
+                f"Skipping duplicate."
+            )
+
+        else:
+
+            audit_record = SecurityResponseAudit(
+
+                incident_id=incident_id,
+
+                incident_type=incident_type,
+
+                severity=severity,
+
+                source_ip=source_ip,
+
+                threat_score=threat_score,
+
+                priority=priority,
+
+                ai_decision=action,
+
+                recommended_action=decision.get(
+                    "recommended_action",
+                    action
+                ),
+
+                confidence_score=confidence_score,
+
+                confidence_level=confidence_level,
+
+                execution_mode=EXECUTION_MODE,
+
+                executed=False,
+
+                execution_action=action,
+
+                execution_message=message
+            )
+
+            db.add(audit_record)
+
+            db.commit()
+
+            audit_saved = True
+
+    except Exception as exc:
+
+        if db is not None:
+            db.rollback()
+
+        print(
+            f"[AUDIT ERROR] Could not save "
+            f"security response audit: {exc}"
+        )
+
+    finally:
+
+        if db is not None:
+            db.close()
+
+
+    # --------------------------------------------------------
     # RETURN EXECUTION RESULT
     # --------------------------------------------------------
 
@@ -168,7 +289,11 @@ def execute_response(decision):
 
         "action": action,
 
-        "message": message
+        "message": message,
+
+        "audit_saved": audit_saved,
+
+        "audit_duplicate": audit_duplicate
 
     }
 
@@ -181,6 +306,10 @@ if __name__ == "__main__":
 
     test_decision = {
 
+        "incident_id": "TEST-AUDIT-001",
+
+        "incident_type": "SSH_BRUTE_FORCE",
+
         "source_ip": "192.168.38.146",
 
         "severity": "HIGH",
@@ -189,7 +318,13 @@ if __name__ == "__main__":
 
         "priority": "P1",
 
-        "decision": "BLOCK_SOURCE_IP"
+        "decision": "BLOCK_SOURCE_IP",
+
+        "recommended_action": "BLOCK_SOURCE_IP",
+
+        "confidence_score": 70,
+
+        "confidence_level": "HIGH"
 
     }
 

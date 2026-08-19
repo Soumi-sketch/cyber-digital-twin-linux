@@ -1,3 +1,4 @@
+from backend.models.security_response_audit import SecurityResponseAudit
 from backend.security.incident_engine import detect_ssh_incidents
 from backend.security.response_engine import generate_response
 from backend.security.response_executor import execute_response
@@ -357,6 +358,42 @@ def security_responses():
         })
 
     return responses
+
+# ============================================================
+# SECURITY RESPONSE AUDIT API
+# ============================================================
+
+@app.get("/security/response-audit")
+def security_response_audit(limit: int = 50):
+
+    with engine.connect() as connection:
+
+        result = connection.execute(text("""
+            SELECT
+                id,
+                incident_id,
+                incident_type,
+                severity,
+                source_ip,
+                threat_score,
+                priority,
+                ai_decision,
+                recommended_action,
+                confidence_score,
+                confidence_level,
+                execution_mode,
+                executed,
+                execution_action,
+                execution_message,
+                created_at
+            FROM security_response_audit
+            ORDER BY created_at DESC
+            LIMIT :limit;
+        """), {
+            "limit": limit
+        })
+
+        return result.mappings().all()
 
 # ============================================================
 # AI SECURITY DECISION API
