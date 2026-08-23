@@ -1550,6 +1550,148 @@ async function loadSecurityDecisions() {
 }
 
 // ============================================================
+// SECURITY RESPONSE AUDIT HISTORY
+// ============================================================
+
+async function loadSecurityResponseAudit() {
+
+    try {
+
+        const response = await fetch(
+            `${API}/security/response-audit?limit=20`
+        );
+
+        const audits = await response.json();
+
+        const table =
+            document.getElementById(
+                "responseAuditTable"
+            );
+
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (!audits || audits.length === 0) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        No security response audit records found
+                    </td>
+                </tr>
+            `;
+
+            return;
+
+        }
+
+        audits.forEach(audit => {
+
+            const row =
+                document.createElement("tr");
+
+            const createdAt =
+                audit.created_at
+                    ? new Date(
+                        audit.created_at
+                    ).toLocaleString()
+                    : "-";
+
+            const executed =
+                audit.executed
+                    ? "YES"
+                    : "NO";
+
+            row.innerHTML = `
+
+                <td>
+                    ${createdAt}
+                </td>
+
+                <td>
+                    ${audit.incident_id || "-"}
+                </td>
+
+                <td>
+                    <strong>
+                        ${audit.severity || "-"}
+                    </strong>
+                </td>
+
+                <td>
+                    ${audit.source_ip || "-"}
+                </td>
+
+                <td>
+                    <strong>
+                        ${audit.threat_score ?? 0}/100
+                    </strong>
+                </td>
+
+                <td>
+                    <strong>
+                        ${audit.priority || "-"}
+                    </strong>
+                </td>
+
+                <td>
+                    <strong>
+                        ${audit.ai_decision || "-"}
+                    </strong>
+                </td>
+
+                <td>
+                    ${audit.execution_action || "-"}
+                </td>
+
+                <td>
+                    ${audit.execution_mode || "-"}
+                </td>
+
+                <td>
+                    ${executed}
+                </td>
+
+            `;
+
+            table.appendChild(row);
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "SECURITY RESPONSE AUDIT ERROR:",
+            error
+        );
+
+        const table =
+            document.getElementById(
+                "responseAuditTable"
+            );
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        Unable to load security response audit history
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
+
+// ============================================================
 // INITIAL LOAD
 // ============================================================
 
@@ -1564,6 +1706,7 @@ loadSecurityIncidents();
 loadSecurityResponses();
 loadResponseExecution();
 loadSecurityDecisions();
+loadSecurityResponseAudit();
 
 // ============================================================
 // AUTO REFRESH
@@ -1606,6 +1749,11 @@ setInterval(
 
 setInterval(
     loadResponseExecution,
+    5000
+);
+
+setInterval(
+    loadSecurityResponseAudit,
     5000
 );
 
