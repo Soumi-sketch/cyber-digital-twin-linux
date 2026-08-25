@@ -1,5 +1,6 @@
 from backend.models.security_response_audit import SecurityResponseAudit
 from backend.security.incident_engine import detect_ssh_incidents
+from backend.security.incident_manager import ensure_incident_open
 from backend.security.response_engine import generate_response
 from backend.security.response_executor import execute_response
 from fastapi import FastAPI
@@ -249,11 +250,36 @@ def get_security_incidents():
 
     for incident in incidents:
 
+        # Automatically register the incident
+        # in the incident lifecycle system
+        lifecycle = ensure_incident_open(
+            incident["incident_id"]
+        )
+
+        # Add lifecycle information
+        # to the API response
+        incident["lifecycle_status"] = (
+            lifecycle["status"]
+        )
+
+        incident["lifecycle_updated_at"] = (
+            lifecycle["updated_at"]
+        )
+
+        # Generate security response
         response = generate_response(incident)
 
-        incident["recommended_action"] = response["recommended_action"]
-        incident["response_description"] = response["description"]
-        incident["response_mode"] = response["mode"]
+        incident["recommended_action"] = (
+            response["recommended_action"]
+        )
+
+        incident["response_description"] = (
+            response["description"]
+        )
+
+        incident["response_mode"] = (
+            response["mode"]
+        )
 
     return incidents
 
