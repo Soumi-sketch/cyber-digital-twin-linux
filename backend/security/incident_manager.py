@@ -49,6 +49,40 @@ def get_incident_status(incident_id):
 
         db.close()
 
+def get_incident_history(incident_id):
+
+    db: Session = SessionLocal()
+
+    try:
+
+        incidents = (
+            db.query(SecurityIncidentStatus)
+            .filter(
+                SecurityIncidentStatus.incident_id
+                == incident_id
+            )
+            .order_by(
+                SecurityIncidentStatus.updated_at.asc()
+            )
+            .all()
+        )
+
+        return [
+            {
+                "id": incident.id,
+                "incident_id": incident.incident_id,
+                "status": incident.status,
+                "previous_status": incident.previous_status,
+                "notes": incident.notes,
+                "updated_at": incident.updated_at
+            }
+            for incident in incidents
+        ]
+
+    finally:
+
+        db.close()
+
 def ensure_incident_open(incident_id):
 
     existing = get_incident_status(

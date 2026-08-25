@@ -3,6 +3,7 @@ from backend.security.incident_engine import detect_ssh_incidents
 from backend.security.incident_manager import (
     ensure_incident_open,
     get_incident_status,
+    get_incident_history,
     update_incident_status
 )
 from backend.security.response_engine import generate_response
@@ -324,6 +325,17 @@ def update_security_incident_status(
     )
 
     return updated
+
+@app.get("/security/incidents/{incident_id}/history")
+def get_security_incident_history(
+    incident_id: str
+):
+
+    history = get_incident_history(
+        incident_id
+    )
+
+    return history
 
 # ============================================================
 # AI SECURITY RESPONSE EXECUTION API
