@@ -1,6 +1,10 @@
 from backend.models.security_response_audit import SecurityResponseAudit
 from backend.security.incident_engine import detect_ssh_incidents
-from backend.security.incident_manager import ensure_incident_open
+from backend.security.incident_manager import (
+    ensure_incident_open,
+    get_incident_status,
+    update_incident_status
+)
 from backend.security.response_engine import generate_response
 from backend.security.response_executor import execute_response
 from fastapi import FastAPI
@@ -282,6 +286,44 @@ def get_security_incidents():
         )
 
     return incidents
+
+# ============================================================
+# SECURITY INCIDENT LIFECYCLE API
+# ============================================================
+
+@app.get("/security/incidents/{incident_id}/status")
+def get_security_incident_status(
+    incident_id: str
+):
+
+    status = get_incident_status(
+        incident_id
+    )
+
+    if status is None:
+
+        return {
+            "incident_id": incident_id,
+            "status": "NOT_FOUND"
+        }
+
+    return status
+
+
+@app.post("/security/incidents/{incident_id}/status")
+def update_security_incident_status(
+    incident_id: str,
+    status: str,
+    notes: str = None
+):
+
+    updated = update_incident_status(
+        incident_id=incident_id,
+        new_status=status,
+        notes=notes
+    )
+
+    return updated
 
 # ============================================================
 # AI SECURITY RESPONSE EXECUTION API
