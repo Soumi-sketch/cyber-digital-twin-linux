@@ -14,6 +14,13 @@ VALID_STATUSES = [
     "CLOSED"
 ]
 
+ALLOWED_TRANSITIONS = {
+    "OPEN": ["INVESTIGATING"],
+    "INVESTIGATING": ["CONTAINED"],
+    "CONTAINED": ["RESOLVED"],
+    "RESOLVED": ["CLOSED"],
+    "CLOSED": []
+}
 
 def get_incident_status(incident_id):
 
@@ -136,6 +143,22 @@ def update_incident_status(
             if latest_incident
             else None
         )
+
+        if previous_status is not None:
+
+            allowed_next_statuses = ALLOWED_TRANSITIONS.get(
+                previous_status,
+                []
+            )
+
+            if new_status not in allowed_next_statuses:
+
+                raise ValueError(
+                    f"Invalid lifecycle transition: "
+                    f"{previous_status} -> {new_status}. "
+                    f"Allowed transitions: "
+                    f"{allowed_next_statuses}"
+                )
 
         incident = SecurityIncidentStatus(
             incident_id=incident_id,

@@ -8,7 +8,7 @@ from backend.security.incident_manager import (
 )
 from backend.security.response_engine import generate_response
 from backend.security.response_executor import execute_response
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
 from fastapi.middleware.cors import CORSMiddleware
@@ -318,13 +318,23 @@ def update_security_incident_status(
     notes: str = None
 ):
 
-    updated = update_incident_status(
-        incident_id=incident_id,
-        new_status=status,
-        notes=notes
-    )
+    try:
 
-    return updated
+        updated = update_incident_status(
+            incident_id=incident_id,
+            new_status=status,
+            notes=notes
+        )
+
+        return updated
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
 
 @app.get("/security/incidents/{incident_id}/history")
 def get_security_incident_history(
