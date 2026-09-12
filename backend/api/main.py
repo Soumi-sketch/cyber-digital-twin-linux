@@ -1,5 +1,8 @@
 from backend.models.security_response_audit import SecurityResponseAudit
-from backend.security.incident_engine import detect_ssh_incidents
+from backend.security.incident_engine import (
+    detect_ssh_incidents,
+    correlate_incidents
+)
 from backend.security.incident_manager import (
     ensure_incident_open,
     get_incident_status,
@@ -243,6 +246,21 @@ def security_risk():
 def security_alerts():
 
     return generate_security_alerts()
+
+# ============================================================
+# SECURITY INCIDENT CAMPAIGN API
+# ============================================================
+
+@app.get("/security/campaigns")
+def get_security_campaigns():
+
+    incidents = detect_ssh_incidents()
+
+    campaigns = correlate_incidents(
+        incidents
+    )
+
+    return campaigns
 
 # ============================================================
 # SECURITY INCIDENT API

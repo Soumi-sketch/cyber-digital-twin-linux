@@ -1090,6 +1090,163 @@ async function loadSecurityIncidents() {
 
 }
 
+
+// ============================================================
+// CORRELATED ATTACK CAMPAIGNS
+// ============================================================
+
+async function loadSecurityCampaigns() {
+
+    try {
+
+        const response =
+            await fetch(
+                `${API}/security/campaigns`,
+                {
+                    method: "GET",
+                    mode: "cors",
+                    cache: "no-store"
+                }
+            );
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Security campaigns HTTP ${response.status}`
+            );
+
+        }
+
+        const campaigns =
+            await response.json();
+
+        const table =
+            document.getElementById(
+                "securityCampaignsTable"
+            );
+
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (
+            !Array.isArray(campaigns) ||
+            campaigns.length === 0
+        ) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        No correlated attack campaigns detected
+                    </td>
+                </tr>
+            `;
+
+            return;
+        }
+
+        campaigns.forEach(campaign => {
+
+            const row =
+                document.createElement("tr");
+
+            row.innerHTML = `
+
+                <td>
+                    <strong>
+                        ${campaign.correlation_id || "-"}
+                    </strong>
+                </td>
+
+                <td>
+                    ${campaign.source_ip || "-"}
+                </td>
+
+                <td>
+                    ${campaign.attack_pattern || "-"}
+                </td>
+
+                <td>
+                    <strong>
+                        ${campaign.severity || "UNKNOWN"}
+                    </strong>
+                </td>
+
+                <td>
+                    ${campaign.incident_count ?? 0}
+                </td>
+
+                <td>
+                    ${campaign.total_attempts ?? 0}
+                </td>
+
+                <td>
+                    ${campaign.failed_logins ?? 0}
+                </td>
+
+                <td>
+                    ${campaign.invalid_users ?? 0}
+                </td>
+
+                <td>
+                    ${
+                        campaign.start_time
+                            ? new Date(
+                                campaign.start_time
+                              ).toLocaleString()
+                            : "-"
+                    }
+                </td>
+
+                <td>
+                    ${
+                        campaign.end_time
+                            ? new Date(
+                                campaign.end_time
+                              ).toLocaleString()
+                            : "-"
+                    }
+                </td>
+
+            `;
+
+            table.appendChild(row);
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "SECURITY CAMPAIGN ERROR:",
+            error
+        );
+
+        const table =
+            document.getElementById(
+                "securityCampaignsTable"
+            );
+
+        if (table) {
+
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        Unable to load correlated attack campaigns
+                    </td>
+                </tr>
+            `;
+
+        }
+
+    }
+
+}
+
+
 // ============================================================
 // SECURITY RESPONSE RECOMMENDATIONS
 // ============================================================
@@ -1703,6 +1860,7 @@ loadAnomalies();
 loadSSHEvents();
 loadSecurityAlerts();
 loadSecurityIncidents();
+loadSecurityCampaigns();
 loadSecurityResponses();
 loadResponseExecution();
 loadSecurityDecisions();
@@ -1739,6 +1897,11 @@ setInterval(
 
 setInterval(
     loadSecurityIncidents,
+    5000
+);
+
+setInterval(
+    loadSecurityCampaigns,
     5000
 );
 

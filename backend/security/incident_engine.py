@@ -12,6 +12,9 @@ from backend.database import engine
 
 INCIDENT_WINDOW_MINUTES = 5
 
+# Correlate separate incidents that are part of
+# the same attack campaign.
+CORRELATION_WINDOW_MINUTES = 30
 
 # ============================================================
 # DETECT SSH INCIDENTS
@@ -454,3 +457,213 @@ def show_incidents():
 if __name__ == "__main__":
 
     show_incidents()
+
+# ============================================================
+# INCIDENT CORRELATION
+# ============================================================
+
+def correlate_incidents(incidents):
+
+    if not incidents:
+        return []
+
+    # --------------------------------------------------------
+    # Sort incidents chronologically
+    # --------------------------------------------------------
+
+    sorted_incidents = sorted(
+        incidents,
+        key=lambda incident: incident["start_time"]
+    )
+
+    campaigns = []
+
+    current_campaign = []
+    current_source_ip = None
+    current_attack_pattern = None
+    previous_end_time = None
+
+    # --------------------------------------------------------
+    # Group related incidents
+    # --------------------------------------------------------
+
+    for incident in sorted_incidents:
+
+        source_ip = incident["source_ip"]
+        attack_pattern = incident["attack_pattern"]
+        start_time = incident["start_time"]
+
+        # First incident
+        if not current_campaign:
+
+            current_campaign = [incident]
+            current_source_ip = source_ip
+            current_attack_pattern = attack_pattern
+            previous_end_time = incident["end_time"]
+
+            continue
+
+        # Time gap from previous incident
+        time_gap = (
+            start_time -
+            previous_end_time
+        )
+
+        related = (
+            source_ip == current_source_ip
+            and
+            attack_pattern == current_attack_pattern
+            and
+            time_gap <= timedelta(
+                minutes=CORRELATION_WINDOW_MINUTES
+            )
+        )
+
+        if related:
+
+            current_campaign.append(incident)
+
+        else:
+
+            # Save previous campaign
+            if len(current_campaign) >= 2:
+
+                campaigns.append(
+                    build_campaign(
+                        current_campaign
+                    )
+                )
+
+            # Start new campaign
+            current_campaign = [incident]
+            current_source_ip = source_ip
+            current_attack_pattern = attack_pattern
+
+        previous_end_time = incident["end_time"]
+
+    # --------------------------------------------------------
+    # Close final campaign
+    # --------------------------------------------------------
+
+    if len(current_campaign) >= 2:
+
+        campaigns.append(
+            build_campaign(
+                current_campaign
+            )
+        )
+
+    # Newest campaigns first
+    campaigns.sort(
+        key=lambda campaign:
+            campaign["end_time"],
+        reverse=True
+    )
+
+    return campaigns
+
+
+# ============================================================
+# BUILD CORRELATED ATTACK CAMPAIGN
+# ============================================================
+
+def build_campaign(incidents):
+
+    source_ip = incidents[0]["source_ip"]
+
+    start_time = min(
+        incident["start_time"]
+        for incident in incidents
+    )
+
+    end_time = max(
+        incident["end_time"]
+        for incident in incidents
+    )
+
+    incident_ids = [
+        incident["incident_id"]
+        for incident in incidents
+    ]
+
+    total_attempts = sum(
+        incident["total_attempts"]
+        for incident in incidents
+    )
+
+    failed_logins = sum(
+        incident["failed_logins"]
+        for incident in incidents
+    )
+
+    invalid_users = sum(
+        incident["invalid_users"]
+        for incident in incidents
+    )
+
+    severities = {
+        incident["severity"]
+        for incident in incidents
+    }
+
+    # --------------------------------------------------------
+    # Campaign severity
+    # --------------------------------------------------------
+
+    if "CRITICAL" in severities:
+
+        severity = "CRITICAL"
+
+    elif "HIGH" in severities:
+
+        severity = "HIGH"
+
+    else:
+
+        severity = "MEDIUM"
+
+    # --------------------------------------------------------
+    # Campaign ID
+    # --------------------------------------------------------
+
+    correlation_id = (
+        f"CAMPAIGN-"
+        f"{source_ip.replace('.', '')}-"
+        f"{int(start_time.timestamp())}"
+    )
+
+    return {
+
+        "correlation_id":
+            correlation_id,
+
+        "source_ip":
+            source_ip,
+
+        "attack_pattern":
+            incidents[0]["attack_pattern"],
+
+        "severity":
+            severity,
+
+        "incident_count":
+            len(incidents),
+
+        "incident_ids":
+            incident_ids,
+
+        "total_attempts":
+            total_attempts,
+
+        "failed_logins":
+            failed_logins,
+
+        "invalid_users":
+            invalid_users,
+
+        "start_time":
+            start_time,
+
+        "end_time":
+            end_time
+    }
