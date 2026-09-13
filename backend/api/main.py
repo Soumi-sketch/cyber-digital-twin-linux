@@ -127,7 +127,8 @@ def get_anomalies():
 @app.get("/ml/anomalies")
 def get_ml_anomalies(
     hostname: str = "prac-server",
-    limit: int = 20
+    limit: int = 20,
+    training_window: int = 1000
 ):
 
     query = """
@@ -167,9 +168,9 @@ def get_ml_anomalies(
 
 
     model = train_anomaly_model(
-        data
+        data,
+        training_window=training_window
     )
-
 
     latest = data.tail(
         limit
