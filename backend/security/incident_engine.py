@@ -34,6 +34,8 @@ def detect_ssh_incidents():
                     event_type,
                     username,
                     source_ip,
+                    target_hostname,
+                    target_ip,
                     event_time
                 FROM ssh_events
                 WHERE event_type IN (
@@ -49,7 +51,7 @@ def detect_ssh_incidents():
         events = result.mappings().all()
 
     # ========================================================
-    # GROUP EVENTS BY SOURCE IP
+    # GROUP EVENTS BY SOURCE + TARGET
     # ========================================================
 
     grouped_events = {}
@@ -57,12 +59,20 @@ def detect_ssh_incidents():
     for event in events:
 
         source_ip = event["source_ip"]
+        target_hostname = event["target_hostname"]
+        target_ip = event["target_ip"]
 
         if not source_ip:
             continue
 
-        grouped_events.setdefault(
+        group_key = (
             source_ip,
+            target_hostname,
+            target_ip
+        )
+
+        grouped_events.setdefault(
+            group_key,
             []
         ).append(event)
 
@@ -70,8 +80,11 @@ def detect_ssh_incidents():
     # CORRELATE ATTACK BURSTS
     # ========================================================
 
-    for source_ip, ip_events in grouped_events.items():
-
+    for (
+        source_ip,
+        target_hostname,
+        target_ip
+    ), ip_events in grouped_events.items():
         current_incident = []
         previous_time = None
 
@@ -123,10 +136,11 @@ def detect_ssh_incidents():
                     incidents.append(
                         build_incident(
                             current_incident,
-                            source_ip
+                            source_ip,
+                            target_hostname,
+                            target_ip
                         )
                     )
-
                 # --------------------------------------------
                 # START NEW INCIDENT
                 # --------------------------------------------
@@ -144,7 +158,9 @@ def detect_ssh_incidents():
             incidents.append(
                 build_incident(
                     current_incident,
-                    source_ip
+                    source_ip,
+                    target_hostname,
+                    target_ip
                 )
             )
 
@@ -165,8 +181,12 @@ def detect_ssh_incidents():
 # BUILD INCIDENT
 # ============================================================
 
-def build_incident(events, source_ip):
-
+def build_incident(
+    events,
+    source_ip,
+    target_hostname,
+    target_ip
+):
     # ========================================================
     # BASIC COUNTS
     # ========================================================
@@ -293,6 +313,7 @@ def build_incident(events, source_ip):
     incident_id = (
         f"SSH-"
         f"{source_ip.replace('.', '')}-"
+        f"{target_ip.replace('.', '')}-"
         f"{int(start_time.timestamp())}"
     )
 
@@ -316,6 +337,12 @@ def build_incident(events, source_ip):
 
         "source_ip":
             source_ip,
+
+        "target_hostname":
+            target_hostname,
+
+        "target_ip":
+            target_ip,
 
         "username":
             username,
@@ -410,6 +437,12 @@ def show_incidents():
             f"Source IP         : "
             f"{incident['source_ip']}\n"
 
+            f"Target Host       : "
+            f"{incident['target_hostname']}\n"
+
+            f"Target IP         : "
+            f"{incident['target_ip']}\n"
+
             f"Username          : "
             f"{incident['username']}\n"
 
@@ -480,6 +513,8 @@ def correlate_incidents(incidents):
 
     current_campaign = []
     current_source_ip = None
+    current_target_hostname = None
+    current_target_ip = None
     current_attack_pattern = None
     previous_end_time = None
 
@@ -490,6 +525,8 @@ def correlate_incidents(incidents):
     for incident in sorted_incidents:
 
         source_ip = incident["source_ip"]
+        target_hostname = incident["target_hostname"]
+        target_ip = incident["target_ip"]
         attack_pattern = incident["attack_pattern"]
         start_time = incident["start_time"]
 
@@ -498,6 +535,8 @@ def correlate_incidents(incidents):
 
             current_campaign = [incident]
             current_source_ip = source_ip
+            current_target_hostname = target_hostname
+            current_target_ip = target_ip
             current_attack_pattern = attack_pattern
             previous_end_time = incident["end_time"]
 
@@ -512,7 +551,9 @@ def correlate_incidents(incidents):
         related = (
             source_ip == current_source_ip
             and
-            attack_pattern == current_attack_pattern
+            target_hostname == current_target_hostname
+            and
+            target_ip == current_target_ip
             and
             time_gap <= timedelta(
                 minutes=CORRELATION_WINDOW_MINUTES
@@ -537,6 +578,8 @@ def correlate_incidents(incidents):
             # Start new campaign
             current_campaign = [incident]
             current_source_ip = source_ip
+            current_target_hostname = target_hostname
+            current_target_ip = target_ip
             current_attack_pattern = attack_pattern
 
         previous_end_time = incident["end_time"]
@@ -570,6 +613,8 @@ def correlate_incidents(incidents):
 def build_campaign(incidents):
 
     source_ip = incidents[0]["source_ip"]
+    target_hostname = incidents[0]["target_hostname"]
+    target_ip = incidents[0]["target_ip"]
 
     start_time = min(
         incident["start_time"]
@@ -629,6 +674,7 @@ def build_campaign(incidents):
     correlation_id = (
         f"CAMPAIGN-"
         f"{source_ip.replace('.', '')}-"
+        f"{target_ip.replace('.', '')}-"
         f"{int(start_time.timestamp())}"
     )
 
@@ -639,6 +685,12 @@ def build_campaign(incidents):
 
         "source_ip":
             source_ip,
+
+        "target_hostname":
+            target_hostname,
+
+        "target_ip":
+            target_ip,
 
         "attack_pattern":
             incidents[0]["attack_pattern"],

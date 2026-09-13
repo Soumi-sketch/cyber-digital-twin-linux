@@ -171,7 +171,7 @@ def parse_ssh_event(line):
 # CHECK DUPLICATE EVENT
 # ============================================================
 
-def event_exists(message):
+def event_exists(message, target_hostname, target_ip):
 
     with engine.connect() as connection:
 
@@ -180,21 +180,24 @@ def event_exists(message):
                 SELECT 1
                 FROM ssh_events
                 WHERE message = :message
+                  AND target_hostname = :target_hostname
+                  AND target_ip = :target_ip
                 LIMIT 1
             """),
             {
-                "message": message
+                "message": message,
+                "target_hostname": target_hostname,
+                "target_ip": target_ip
             }
         )
 
         return result.first() is not None
 
-
 # ============================================================
 # SAVE EVENT
 # ============================================================
 
-def save_ssh_event(event):
+def save_ssh_event(event, target_hostname, target_ip):
 
     with engine.begin() as connection:
 
@@ -206,7 +209,9 @@ def save_ssh_event(event):
                     username,
                     source_ip,
                     message,
-                    event_time
+                    event_time,
+                    target_hostname,
+                    target_ip
                 )
                 VALUES
                 (
@@ -214,18 +219,23 @@ def save_ssh_event(event):
                     :username,
                     :source_ip,
                     :message,
-                    COALESCE(:event_time, CURRENT_TIMESTAMP)
+                    COALESCE(:event_time, CURRENT_TIMESTAMP),
+                    :target_hostname,
+                    :target_ip
                 )
             """),
-            event
+            {
+                **event,
+                "target_hostname": target_hostname,
+                "target_ip": target_ip
+            }
         )
-
 
 # ============================================================
 # COLLECT SSH EVENTS
 # ============================================================
 
-def collect_ssh_events(client):
+def collect_ssh_events(client, target_hostname, target_ip):
 
     logs = get_ssh_logs(client)
 
@@ -240,16 +250,25 @@ def collect_ssh_events(client):
 
         # Every SSH user is monitored.
 
-        if event_exists(event["message"]):
+        if event_exists(
+            event["message"],
+            target_hostname,
+            target_ip
+        ):
             continue
 
-        save_ssh_event(event)
+        save_ssh_event(
+            event,
+            target_hostname,
+            target_ip
+        )
 
         print(
             f"🔐 SSH EVENT: "
             f"{event['event_type']} | "
             f"user={event['username']} | "
-            f"ip={event['source_ip']}"
+            f"source={event['source_ip']} | "
+            f"target={target_hostname} ({target_ip})"
         )
 
         events_found += 1

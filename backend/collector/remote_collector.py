@@ -1,4 +1,3 @@
-import os
 import paramiko
 from dotenv import load_dotenv
 
@@ -12,12 +11,8 @@ from backend.collector.parser import (
 
 load_dotenv(override=True)
 
-HOST = os.getenv("HOST")
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
 
-
-def create_ssh_client():
+def create_ssh_client(host_config):
 
     client = paramiko.SSHClient()
 
@@ -25,12 +20,21 @@ def create_ssh_client():
         paramiko.AutoAddPolicy()
     )
 
-    client.connect(
-        hostname=HOST,
-        username=USERNAME,
-        password=PASSWORD,
-        timeout=10
-    )
+    connect_args = {
+        "hostname": host_config["host"],
+        "username": host_config["username"],
+        "timeout": 10
+    }
+
+    if host_config["auth_method"] == "key":
+
+        connect_args["key_filename"] = host_config["key_file"]
+
+    else:
+
+        connect_args["password"] = host_config["password"]
+
+    client.connect(**connect_args)
 
     return client
 

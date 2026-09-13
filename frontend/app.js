@@ -1165,6 +1165,14 @@ async function loadSecurityCampaigns() {
                 </td>
 
                 <td>
+                    ${campaign.target_hostname || "-"}
+                </td>
+
+                <td>
+                   ${campaign.target_ip || "-"}
+                </td>
+
+                <td>
                     ${campaign.attack_pattern || "-"}
                 </td>
 
