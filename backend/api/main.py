@@ -19,6 +19,18 @@ from sqlalchemy import text
 
 from backend.database import engine
 from backend.ai.anomaly_service import analyze_all_metrics
+
+from backend.ai.ml_anomaly_detector import (
+    train_anomaly_model,
+    predict_anomaly
+)
+
+from backend.ai.predictive_failure import (
+    predict_failure
+)
+
+import pandas as pd
+
 from backend.ai.security_decision_engine import generate_security_decision
 
 app = FastAPI(
@@ -107,6 +119,141 @@ def get_anomalies():
 
     return analyze_all_metrics()
 
+
+# ============================================================
+# ML ANOMALY DETECTION
+# ============================================================
+
+@app.get("/ml/anomalies")
+def get_ml_anomalies(
+    hostname: str = "prac-server",
+    limit: int = 20
+):
+
+    query = """
+        SELECT
+            hostname,
+            cpu_usage,
+            memory_usage,
+            disk_usage,
+            collected_at
+        FROM system_metrics
+        WHERE hostname = :hostname
+          AND cpu_usage IS NOT NULL
+          AND memory_usage IS NOT NULL
+          AND disk_usage IS NOT NULL
+        ORDER BY collected_at ASC
+    """
+
+    with engine.connect() as connection:
+
+        data = pd.read_sql(
+            text(query),
+            connection,
+            params={
+                "hostname": hostname
+            }
+        )
+
+
+    if len(data) < 20:
+
+        return {
+            "hostname": hostname,
+            "status": "Not enough data",
+            "samples": len(data),
+            "results": []
+        }
+
+
+    model = train_anomaly_model(
+        data
+    )
+
+
+    latest = data.tail(
+        limit
+    ).copy()
+
+
+    result = predict_anomaly(
+        model,
+        latest
+    )
+
+
+    return {
+        "hostname": hostname,
+        "samples": len(data),
+        "anomalies": int(
+            result["is_ml_anomaly"].sum()
+        ),
+        "results": result.to_dict(
+            orient="records"
+        )
+    }
+
+# ============================================================
+# PREDICTIVE SYSTEM FAILURE ANALYSIS
+# ============================================================
+
+@app.get("/predictive/failure")
+def get_predictive_failure(
+    hostname: str = "prac-server",
+    limit: int = 500
+):
+
+    query = """
+        SELECT
+            hostname,
+            cpu_usage,
+            memory_usage,
+            disk_usage,
+            collected_at
+        FROM system_metrics
+        WHERE hostname = :hostname
+          AND cpu_usage IS NOT NULL
+          AND memory_usage IS NOT NULL
+          AND disk_usage IS NOT NULL
+        ORDER BY collected_at ASC
+    """
+
+    with engine.connect() as connection:
+
+        data = pd.read_sql(
+            text(query),
+            connection,
+            params={
+                "hostname": hostname
+            }
+        )
+
+
+    if data.empty:
+
+        return {
+            "hostname": hostname,
+            "status": "No Data",
+            "risk_score": 0,
+            "reasons": []
+        }
+
+
+    recent = data.tail(
+        limit
+    ).copy()
+
+
+    result = predict_failure(
+        recent
+    )
+
+
+    return {
+        "hostname": hostname,
+        "samples": len(recent),
+        **result
+    }
 
 # ============================================================
 # HOSTS
