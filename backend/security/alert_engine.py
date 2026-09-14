@@ -5,6 +5,33 @@ from sqlalchemy import text
 from backend.database import engine
 from backend.security.risk_engine import analyze_ssh_events
 
+from backend.notifications.email_service import (
+    send_email_notification
+)
+
+from backend.notifications.telegram_service import (
+    send_telegram_notification
+)
+
+from backend.notifications.notification_manager import (
+    send_alert_notifications
+)
+
+def build_notification_message(
+    alert
+):
+
+
+    return (
+        "🚨 CYBER DIGITAL TWIN SECURITY ALERT\n\n"
+        f"Alert Level: {alert['alert_level']}\n"
+        f"Risk Score: {alert['risk_score']}\n"
+        f"Event Type: {alert['event_type']}\n"
+        f"Username: {alert['username']}\n"
+        f"Source IP: {alert['source_ip']}\n"
+        f"Reason: {alert['reason']}\n"
+        f"Event Time: {alert['event_time']}\n"
+    )
 
 def generate_security_alerts():
 
@@ -86,3 +113,38 @@ if __name__ == "__main__":
             )
 
     print("\n=====================================\n")
+
+
+def process_security_alert(
+    alert
+):
+
+    if not alert:
+
+        return {
+            "status": "ignored",
+            "reason": "Empty alert"
+        }
+
+
+    if alert["alert_level"] not in (
+        "HIGH",
+        "CRITICAL"
+    ):
+
+        return {
+            "status": "ignored",
+            "reason": "Alert level below notification threshold"
+        }
+
+
+    results = send_alert_notifications(
+        alert
+    )
+
+
+    return {
+        "status": "processed",
+        "event_id": alert["event_id"],
+        "notification_results": results
+    }
