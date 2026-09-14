@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Depends
 from sqlalchemy import text
 
 from backend.database import engine
@@ -33,11 +34,22 @@ import pandas as pd
 
 from backend.ai.security_decision_engine import generate_security_decision
 
+from backend.auth.routes import (
+    router as auth_router
+)
+
+from backend.auth.dependencies import (
+    get_current_user
+)
+
 app = FastAPI(
     title="AI Powered Cyber Digital Twin",
     version="1.0"
 )
 
+app.include_router(
+    auth_router
+)
 
 # ============================================================
 # CORS
@@ -68,7 +80,11 @@ def home():
 # ============================================================
 
 @app.get("/metrics")
-def get_metrics():
+def get_metrics(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     with engine.connect() as connection:
 
@@ -86,7 +102,12 @@ def get_metrics():
 # ============================================================
 
 @app.get("/metrics/history")
-def get_metrics_history(limit: int = 50):
+def get_metrics_history(
+    limit: int = 50,
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     with engine.connect() as connection:
 
@@ -115,7 +136,11 @@ def get_metrics_history(limit: int = 50):
 # ============================================================
 
 @app.get("/anomalies")
-def get_anomalies():
+def get_anomalies(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     return analyze_all_metrics()
 
@@ -128,7 +153,10 @@ def get_anomalies():
 def get_ml_anomalies(
     hostname: str = "prac-server",
     limit: int = 20,
-    training_window: int = 1000
+    training_window: int = 1000,
+    current_user = Depends(
+        get_current_user
+    )
 ):
 
     query = """
@@ -201,7 +229,10 @@ def get_ml_anomalies(
 @app.get("/predictive/failure")
 def get_predictive_failure(
     hostname: str = "prac-server",
-    limit: int = 500
+    limit: int = 500,
+    current_user = Depends(
+        get_current_user
+    )
 ):
 
     query = """
@@ -261,7 +292,11 @@ def get_predictive_failure(
 # ============================================================
 
 @app.get("/hosts")
-def get_hosts():
+def get_hosts(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     with engine.connect() as connection:
 
@@ -357,7 +392,12 @@ def get_health():
 # ============================================================
 
 @app.get("/ssh/events")
-def get_ssh_events(limit: int = 20):
+def get_ssh_events(
+    limit: int = 20,
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     with engine.connect() as connection:
 
@@ -382,7 +422,11 @@ def get_ssh_events(limit: int = 20):
 # ============================================================
 
 @app.get("/security/risk")
-def security_risk():
+def security_risk(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     return analyze_ssh_events()
 
@@ -391,7 +435,11 @@ def security_risk():
 # ============================================================
 
 @app.get("/security/alerts")
-def security_alerts():
+def security_alerts(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     return generate_security_alerts()
 
@@ -400,7 +448,11 @@ def security_alerts():
 # ============================================================
 
 @app.get("/security/campaigns")
-def get_security_campaigns():
+def get_security_campaigns(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     incidents = detect_ssh_incidents()
 
@@ -415,7 +467,11 @@ def get_security_campaigns():
 # ============================================================
 
 @app.get("/security/incidents")
-def get_security_incidents():
+def get_security_incidents(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     incidents = detect_ssh_incidents()
 
@@ -460,7 +516,10 @@ def get_security_incidents():
 
 @app.get("/security/incidents/{incident_id}/status")
 def get_security_incident_status(
-    incident_id: str
+    incident_id: str,
+    current_user = Depends(
+        get_current_user
+    )
 ):
 
     status = get_incident_status(
@@ -481,7 +540,10 @@ def get_security_incident_status(
 def update_security_incident_status(
     incident_id: str,
     status: str,
-    notes: str = None
+    notes: str = None,
+    current_user = Depends(
+        get_current_user
+    )
 ):
 
     try:
@@ -504,7 +566,10 @@ def update_security_incident_status(
 
 @app.get("/security/incidents/{incident_id}/history")
 def get_security_incident_history(
-    incident_id: str
+    incident_id: str,
+    current_user = Depends(
+        get_current_user
+    )
 ):
 
     history = get_incident_history(
@@ -518,7 +583,11 @@ def get_security_incident_history(
 # ============================================================
 
 @app.get("/security/responses")
-def security_responses():
+def security_responses(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     incidents = detect_ssh_incidents()
 
@@ -620,7 +689,12 @@ def security_responses():
 # ============================================================
 
 @app.get("/security/response-audit")
-def security_response_audit(limit: int = 50):
+def security_response_audit(
+    limit: int = 50,
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     with engine.connect() as connection:
 
@@ -656,7 +730,11 @@ def security_response_audit(limit: int = 50):
 # ============================================================
 
 @app.get("/security/decisions")
-def security_decisions():
+def security_decisions(
+    current_user = Depends(
+        get_current_user
+    )
+):
 
     incidents = detect_ssh_incidents()
 

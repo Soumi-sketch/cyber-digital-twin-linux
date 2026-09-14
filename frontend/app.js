@@ -1,3 +1,610 @@
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+
+const TOKEN_KEY = "cyber_digital_twin_access_token";
+
+let refreshIntervals = [];
+
+let dashboardInitialized = false;
+
+function getAccessToken() {
+
+    return sessionStorage.getItem(
+        TOKEN_KEY
+    );
+
+}
+
+
+function saveAccessToken(
+    token
+) {
+
+    sessionStorage.setItem(
+        TOKEN_KEY,
+        token
+    );
+
+}
+
+
+function clearAccessToken() {
+
+    sessionStorage.removeItem(
+        TOKEN_KEY
+    );
+
+}
+
+
+function lockDashboard() {
+
+    document.body.classList.add(
+        "auth-locked"
+    );
+
+
+    const loginScreen =
+        document.getElementById(
+            "loginScreen"
+        );
+
+
+    if (loginScreen) {
+
+        loginScreen.style.display =
+            "flex";
+
+    }
+
+}
+
+function unlockDashboard() {
+
+    document.body.classList.remove(
+        "auth-locked"
+    );
+
+
+    const loginScreen =
+        document.getElementById(
+            "loginScreen"
+        );
+
+
+    if (loginScreen) {
+
+        loginScreen.style.display =
+            "none";
+
+    }
+
+}
+
+function showLoginMessage(
+    message
+) {
+
+    const element =
+        document.getElementById(
+            "loginMessage"
+        );
+
+    if (!element) {
+        return;
+    }
+
+    element.textContent =
+        message;
+
+}
+
+
+function logout() {
+
+    clearAccessToken();
+
+
+    refreshIntervals.forEach(
+        (intervalId) => {
+
+            clearInterval(
+                intervalId
+            );
+
+        }
+    );
+
+
+    refreshIntervals = [];
+
+
+    lockDashboard();
+
+
+    showLoginMessage(
+        "Session ended. Please login again."
+    );
+
+}
+
+async function apiFetch(
+    url,
+    options = {}
+) {
+
+    const token =
+        getAccessToken();
+
+
+    const headers = new Headers(
+        options.headers || {}
+    );
+
+
+    if (token) {
+
+        headers.set(
+            "Authorization",
+            `Bearer ${token}`
+        );
+
+    }
+
+
+    const response =
+        await fetch(
+            url,
+            {
+                ...options,
+                headers
+            }
+        );
+
+
+    if (response.status === 401) {
+
+        logout();
+
+        throw new Error(
+            "Authentication required"
+        );
+
+    }
+
+
+    return response;
+
+}
+
+
+async function login(
+    username,
+    password
+) {
+
+    const response =
+        await fetch(
+            `${API}/auth/login`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify(
+                    {
+                        username,
+                        password
+                    }
+                )
+            }
+        );
+
+
+    const data =
+        await response.json();
+
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.detail ||
+            "Login failed"
+        );
+
+    }
+
+
+    if (!data.access_token) {
+
+        throw new Error(
+            "Authentication token not received"
+        );
+
+    }
+
+
+    saveAccessToken(
+        data.access_token
+    );
+
+
+    return data;
+
+}
+
+
+async function handleLogin(
+    event
+) {
+
+    event.preventDefault();
+
+
+    const username =
+        document.getElementById(
+            "loginUsername"
+        ).value.trim();
+
+
+    const password =
+        document.getElementById(
+            "loginPassword"
+        ).value;
+
+
+    const button =
+        document.getElementById(
+            "loginButton"
+        );
+
+
+    if (!username || !password) {
+
+        showLoginMessage(
+            "Username and password are required."
+        );
+
+        return;
+
+    }
+
+
+    button.disabled = true;
+
+    button.textContent =
+        "Logging in...";
+
+
+    showLoginMessage(
+        ""
+    );
+
+
+    try {
+
+        const data =
+            await login(
+                username,
+                password
+            );
+
+
+        unlockDashboard();
+
+
+        showLoginMessage(
+            ""
+        );
+
+
+        addLogoutButton(
+            data.username
+        );
+
+
+        initializeDashboard();
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "LOGIN ERROR:",
+            error
+        );
+
+
+        clearAccessToken();
+
+
+        showLoginMessage(
+            error.message ||
+            "Invalid username or password."
+        );
+
+    }
+
+    finally {
+
+        button.disabled = false;
+
+        button.textContent =
+            "Login";
+
+    }
+
+}
+
+
+function addLogoutButton(
+    username
+) {
+
+    let logoutContainer =
+        document.getElementById(
+            "logoutContainer"
+        );
+
+
+    if (logoutContainer) {
+        return;
+    }
+
+
+    logoutContainer =
+        document.createElement(
+            "div"
+        );
+
+
+    logoutContainer.id =
+        "logoutContainer";
+
+
+    logoutContainer.innerHTML = `
+
+        <span>
+            Logged in as:
+            <strong>
+                ${username}
+            </strong>
+        </span>
+
+        <button
+            id="logoutButton"
+            type="button"
+        >
+            Logout
+        </button>
+
+    `;
+
+
+    document.body.prepend(
+        logoutContainer
+    );
+
+
+    document
+        .getElementById(
+            "logoutButton"
+        )
+        .addEventListener(
+            "click",
+            logout
+        );
+
+}
+
+
+function initializeDashboard() {
+
+    if (dashboardInitialized) {
+
+        console.log(
+            "=== DASHBOARD ALREADY INITIALIZED ==="
+        );
+
+        return;
+
+    }
+
+
+    dashboardInitialized = true;
+
+
+    console.log(
+        "=== INITIALIZING AUTHENTICATED DASHBOARD ==="
+    );
+
+    loadDashboard();
+
+    loadHistory();
+
+    loadAnomalies();
+
+    loadSSHEvents();
+
+    loadSecurityAlerts();
+
+    loadSecurityIncidents();
+
+    loadSecurityCampaigns();
+
+    loadSecurityResponses();
+
+    loadResponseExecution();
+
+    loadSecurityDecisions();
+
+    loadSecurityResponseAudit();
+
+
+    startAutoRefresh();
+
+
+    console.log(
+        "=== CYBER DIGITAL TWIN AUTO-REFRESH ENABLED ==="
+    );
+
+}
+
+
+function startAutoRefresh() {
+
+    refreshIntervals.forEach(
+        (intervalId) => {
+
+            clearInterval(
+                intervalId
+            );
+
+        }
+    );
+
+
+    refreshIntervals = [];
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadDashboard,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadHistory,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadAnomalies,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSSHEvents,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityAlerts,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityIncidents,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityCampaigns,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityResponses,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadResponseExecution,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityResponseAudit,
+            5000
+        )
+    );
+
+
+    refreshIntervals.push(
+        setInterval(
+            loadSecurityDecisions,
+            5000
+        )
+    );
+
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        lockDashboard();
+
+
+        const loginForm =
+            document.getElementById(
+                "loginForm"
+            );
+
+
+        if (loginForm) {
+
+            loginForm.addEventListener(
+                "submit",
+                handleLogin
+            );
+
+        }
+
+
+        const existingToken =
+            getAccessToken();
+
+
+        if (existingToken) {
+
+            unlockDashboard();
+
+
+            addLogoutButton(
+                "admin"
+            );
+
+
+            initializeDashboard();
+
+        }
+
+    }
+);
+
 console.log("=== CYBER DIGITAL TWIN APP.JS LOADED ===");
 
 const API = "http://192.168.38.146:8000";
@@ -15,7 +622,7 @@ async function loadDashboard() {
 
     try {
 
-        const response = await fetch(
+        const response = await apiFetch(
             `${API}/health`,
             {
                 method: "GET",
@@ -70,7 +677,7 @@ async function loadHistory() {
 
     try {
 
-        const response = await fetch(
+        const response = await apiFetch(
             `${API}/metrics/history?limit=50`,
             {
                 method: "GET",
@@ -128,7 +735,7 @@ async function loadAnomalies() {
 
     try {
 
-        const response = await fetch(
+        const response = await apiFetch(
             `${API}/anomalies`,
             {
                 method: "GET",
@@ -360,7 +967,7 @@ async function loadSSHEvents() {
 
     try {
 
-        const eventsResponse = await fetch(
+        const eventsResponse = await apiFetch(
             `${API}/ssh/events?limit=20`,
             {
                 method: "GET",
@@ -379,7 +986,7 @@ async function loadSSHEvents() {
             await eventsResponse.json();
 
 
-        const alertsResponse = await fetch(
+        const alertsResponse = await apiFetch(
             `${API}/security/alerts`,
             {
                 method: "GET",
@@ -590,7 +1197,7 @@ async function loadSecurityAlerts() {
     try {
 
         const response =
-            await fetch(
+            await apiFetch(
                 `${API}/security/alerts`,
                 {
                     method: "GET",
@@ -696,7 +1303,7 @@ async function loadSecurityIncidents() {
 
     try {
 
-        const response = await fetch(
+        const response = await apiFetch(
             `${API}/security/incidents`,
             {
                 method: "GET",
@@ -1100,7 +1707,7 @@ async function loadSecurityCampaigns() {
     try {
 
         const response =
-            await fetch(
+            await apiFetch(
                 `${API}/security/campaigns`,
                 {
                     method: "GET",
@@ -1264,7 +1871,7 @@ async function loadSecurityResponses() {
     try {
 
         const response =
-            await fetch(
+            await apiFetch(
                 `${API}/security/incidents`,
                 {
                     method: "GET",
@@ -1370,7 +1977,7 @@ async function loadResponseExecution() {
     try {
 
         const response =
-            await fetch(
+            await apiFetch(
                 `${API}/security/responses`,
                 {
                     method: "GET",
@@ -1550,7 +2157,7 @@ async function loadSecurityDecisions() {
     try {
 
         const response =
-            await fetch(
+            await apiFetch(
                 `${API}/security/decisions`,
                 {
                     method: "GET",
@@ -1722,7 +2329,7 @@ async function loadSecurityResponseAudit() {
 
     try {
 
-        const response = await fetch(
+        const response = await apiFetch(
             `${API}/security/response-audit?limit=20`
         );
 
@@ -1860,79 +2467,10 @@ async function loadSecurityResponseAudit() {
 // INITIAL LOAD
 // ============================================================
 
-console.log("=== INITIALIZING CYBER DIGITAL TWIN ===");
-
-loadDashboard();
-loadHistory();
-loadAnomalies();
-loadSSHEvents();
-loadSecurityAlerts();
-loadSecurityIncidents();
-loadSecurityCampaigns();
-loadSecurityResponses();
-loadResponseExecution();
-loadSecurityDecisions();
-loadSecurityResponseAudit();
-
 // ============================================================
-// AUTO REFRESH
+// AUTHENTICATED DASHBOARD INITIALIZATION
 // ============================================================
-
-setInterval(
-    loadDashboard,
-    5000
-);
-
-setInterval(
-    loadHistory,
-    5000
-);
-
-setInterval(
-    loadAnomalies,
-    5000
-);
-
-setInterval(
-    loadSSHEvents,
-    5000
-);
-
-setInterval(
-    loadSecurityAlerts,
-    5000
-);
-
-setInterval(
-    loadSecurityIncidents,
-    5000
-);
-
-setInterval(
-    loadSecurityCampaigns,
-    5000
-);
-
-setInterval(
-    loadSecurityResponses,
-    5000
-);
-
-setInterval(
-    loadResponseExecution,
-    5000
-);
-
-setInterval(
-    loadSecurityResponseAudit,
-    5000
-);
-
-setInterval(
-    loadSecurityDecisions,
-    5000
-);
 
 console.log(
-    "=== CYBER DIGITAL TWIN AUTO-REFRESH ENABLED ==="
+    "=== AUTHENTICATED DASHBOARD READY ==="
 );
