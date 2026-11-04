@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -7,7 +7,12 @@ from backend.auth.password import (
 )
 
 from backend.auth.jwt_handler import (
-    create_access_token
+    create_access_token,
+    revoke_access_token
+)
+
+from backend.auth.dependencies import (
+    get_current_user
 )
 
 from backend.database import engine
@@ -96,4 +101,17 @@ def login(
         "token_type": "bearer",
         "username": user["username"],
         "role": user["role"]
+    }
+
+@router.post("/logout")
+def logout(
+    current_user: dict = Depends(get_current_user)
+):
+
+    revoke_access_token(
+        current_user
+    )
+
+    return {
+        "message": "Successfully logged out"
     }

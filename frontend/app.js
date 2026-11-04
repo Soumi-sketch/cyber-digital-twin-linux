@@ -185,8 +185,39 @@ function showLoginMessage(
 
 }
 
-function logout() {
+async function logout() {
 
+    const token = getAccessToken();
+
+    // Revoke the token on the backend
+    if (token) {
+
+        try {
+
+            await fetch(
+                `${API}/auth/logout`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                }
+            );
+
+        }
+
+        catch (error) {
+
+            console.error(
+                "Server logout request failed:",
+                error
+            );
+
+        }
+
+    }
+
+    // Clear the browser session
     clearAccessToken();
 
     clearUserRole();
@@ -199,7 +230,6 @@ function logout() {
 
     refreshIntervals = [];
 
-    // Remove the previous user's identity display
     const logoutContainer =
         document.getElementById("logoutContainer");
 
@@ -207,7 +237,6 @@ function logout() {
         logoutContainer.remove();
     }
 
-    // Allow the next user to initialize the dashboard
     dashboardInitialized = false;
 
     lockDashboard();
