@@ -783,7 +783,7 @@ document.addEventListener(
 
 console.log("=== CYBER DIGITAL TWIN APP.JS LOADED ===");
 
-const API = "http://192.168.38.146:8000";
+const API = "/api";
 
 let cpuChart;
 let memoryChart;
