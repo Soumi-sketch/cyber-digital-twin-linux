@@ -53,13 +53,16 @@ def create_access_token(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
+    issued_at = datetime.now(
+        timezone.utc
+    )
 
     to_encode.update(
         {
-            "exp": expire
+            "exp": expire,
+            "iat": issued_at
         }
     )
-
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -82,9 +85,12 @@ def verify_access_token(
             SECRET_KEY,
             algorithms=[
                 ALGORITHM
-            ]
+            ],
+            options={
+                "require_exp": True,
+                "require_sub": True
+            }
         )
-
 
         username = payload.get(
             "sub"
