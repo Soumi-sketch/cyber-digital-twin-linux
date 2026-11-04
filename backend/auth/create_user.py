@@ -3,7 +3,8 @@ import getpass
 from sqlalchemy import text
 
 from backend.auth.password import (
-    hash_password
+    hash_password,
+    validate_password
 )
 
 from backend.database import engine
@@ -65,14 +66,13 @@ def create_user():
         return
 
 
-    if len(password) < 8:
+    password_errors = validate_password(password)
 
-        print(
-            "❌ Password must contain at least 8 characters."
-        )
+    if password_errors:
+        for error in password_errors:
+            print(f"❌ {error}")
 
         return
-
 
     password_hash = hash_password(
         password

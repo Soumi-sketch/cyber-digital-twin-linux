@@ -358,17 +358,19 @@ const payload =
 
 if (
     !payload ||
-    !payload.role
+    !payload.role ||
+    !payload.exp ||
+    payload.exp <= Date.now() / 1000
 ) {
 
     clearAccessToken();
+    clearUserRole();
 
     throw new Error(
-        "User role not found in authentication token."
+        "Invalid or expired authentication token."
     );
 
 }
-
 
 saveUserRole(
     payload.role
@@ -786,11 +788,13 @@ document.addEventListener(
                 "viewer"
             ];
 
-            if (
-                !payload ||
-                !validRoles.includes(role) ||
-                (payload.exp && payload.exp <= Date.now() / 1000)
-            ) {
+if (
+    !payload ||
+    !validRoles.includes(role) ||
+    !payload.exp ||
+    payload.exp <= Date.now() / 1000
+) {
+
                 logout();
                 return;
             }
