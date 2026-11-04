@@ -39,7 +39,8 @@ from backend.auth.routes import (
 )
 
 from backend.auth.dependencies import (
-    get_current_user
+    get_current_user,
+    require_roles
 )
 
 app = FastAPI(
@@ -314,8 +315,11 @@ def get_hosts(
 # ============================================================
 
 @app.get("/health")
-def get_health():
-
+def get_health(
+    current_user = Depends(
+        get_current_user
+    )
+):
     with engine.connect() as connection:
 
         result = connection.execute(text("""
@@ -542,7 +546,9 @@ def update_security_incident_status(
     status: str,
     notes: str = None,
     current_user = Depends(
-        get_current_user
+        require_roles(
+            {"admin"}
+        )
     )
 ):
 
@@ -585,7 +591,9 @@ def get_security_incident_history(
 @app.get("/security/responses")
 def security_responses(
     current_user = Depends(
-        get_current_user
+        require_roles(
+            {"admin"}
+        )
     )
 ):
 
@@ -692,10 +700,15 @@ def security_responses(
 def security_response_audit(
     limit: int = 50,
     current_user = Depends(
-        get_current_user
+        require_roles(
+            {
+                "admin",
+                "analyst",
+                "viewer"
+            }
+        )
     )
 ):
-
     with engine.connect() as connection:
 
         result = connection.execute(text("""

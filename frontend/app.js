@@ -4,6 +4,91 @@
 
 const TOKEN_KEY = "cyber_digital_twin_access_token";
 
+const ROLE_KEY =
+    "cyber_digital_twin_user_role";
+
+
+let currentUserRole = null;
+
+
+function getUserRole() {
+
+    return sessionStorage.getItem(
+        ROLE_KEY
+    );
+
+}
+
+
+function saveUserRole(
+    role
+) {
+
+    sessionStorage.setItem(
+        ROLE_KEY,
+        role
+    );
+
+    currentUserRole =
+        role;
+
+}
+
+
+function clearUserRole() {
+
+    sessionStorage.removeItem(
+        ROLE_KEY
+    );
+
+    currentUserRole =
+        null;
+
+}
+
+
+function decodeJwtPayload(
+    token
+) {
+
+    try {
+
+        const payload =
+            token.split(".")[1];
+
+
+        const normalized =
+            payload
+                .replace(/-/g, "+")
+                .replace(/_/g, "/");
+
+
+        const decoded =
+            atob(
+                normalized
+            );
+
+
+        return JSON.parse(
+            decoded
+        );
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "JWT PAYLOAD DECODE ERROR:",
+            error
+        );
+
+
+        return null;
+
+    }
+
+}
+
 let refreshIntervals = [];
 
 let dashboardInitialized = false;
@@ -100,33 +185,36 @@ function showLoginMessage(
 
 }
 
-
 function logout() {
 
     clearAccessToken();
 
+    clearUserRole();
 
     refreshIntervals.forEach(
         (intervalId) => {
-
-            clearInterval(
-                intervalId
-            );
-
+            clearInterval(intervalId);
         }
     );
 
-
     refreshIntervals = [];
 
+    // Remove the previous user's identity display
+    const logoutContainer =
+        document.getElementById("logoutContainer");
+
+    if (logoutContainer) {
+        logoutContainer.remove();
+    }
+
+    // Allow the next user to initialize the dashboard
+    dashboardInitialized = false;
 
     lockDashboard();
-
 
     showLoginMessage(
         "Session ended. Please login again."
     );
-
 }
 
 async function apiFetch(
@@ -228,12 +316,43 @@ async function login(
     }
 
 
-    saveAccessToken(
+saveAccessToken(
+    data.access_token
+);
+
+
+const payload =
+    decodeJwtPayload(
         data.access_token
     );
 
 
-    return data;
+if (
+    !payload ||
+    !payload.role
+) {
+
+    clearAccessToken();
+
+    throw new Error(
+        "User role not found in authentication token."
+    );
+
+}
+
+
+saveUserRole(
+    payload.role
+);
+
+
+console.log(
+    "Authenticated role:",
+    payload.role
+);
+
+
+return data;
 
 }
 
@@ -351,29 +470,45 @@ function addLogoutButton(
             "logoutContainer"
         );
 
+    // Create the container only if it does not exist
+    if (!logoutContainer) {
 
-    if (logoutContainer) {
-        return;
+        logoutContainer =
+            document.createElement(
+                "div"
+            );
+
+        logoutContainer.id =
+            "logoutContainer";
+
+        document.body.prepend(
+            logoutContainer
+        );
     }
 
-
-    logoutContainer =
-        document.createElement(
-            "div"
-        );
-
-
-    logoutContainer.id =
-        "logoutContainer";
-
-
+    // Always update the current user's identity
     logoutContainer.innerHTML = `
 
         <span>
+
             Logged in as:
+
             <strong>
                 ${username}
             </strong>
+
+            &nbsp; | &nbsp;
+
+            Role:
+
+            <strong>
+                ${
+                    currentUserRole
+                        ? currentUserRole.toUpperCase()
+                        : "UNKNOWN"
+                }
+            </strong>
+
         </span>
 
         <button
@@ -385,12 +520,7 @@ function addLogoutButton(
 
     `;
 
-
-    document.body.prepend(
-        logoutContainer
-    );
-
-
+    // Attach logout event listener
     document
         .getElementById(
             "logoutButton"
@@ -401,7 +531,6 @@ function addLogoutButton(
         );
 
 }
-
 
 function initializeDashboard() {
 
@@ -418,6 +547,23 @@ function initializeDashboard() {
 
     dashboardInitialized = true;
 
+    // ============================================================
+// ROLE-BASED FRONTEND VISIBILITY
+// ============================================================
+
+const responseSection =
+    document.getElementById(
+        "securityResponseExecutionSection"
+    );
+
+if (responseSection) {
+
+    responseSection.style.display =
+        currentUserRole === "admin"
+            ? ""
+            : "none";
+
+}
 
     console.log(
         "=== INITIALIZING AUTHENTICATED DASHBOARD ==="
@@ -439,8 +585,13 @@ function initializeDashboard() {
 
     loadSecurityResponses();
 
+if (
+    currentUserRole === "admin"
+) {
+
     loadResponseExecution();
 
+}
     loadSecurityDecisions();
 
     loadSecurityResponseAudit();
@@ -536,12 +687,16 @@ function startAutoRefresh() {
     );
 
 
-    refreshIntervals.push(
-        setInterval(
-            loadResponseExecution,
-            5000
-        )
-    );
+    if (currentUserRole === "admin") {
+
+        refreshIntervals.push(
+            setInterval(
+                loadResponseExecution,
+                5000
+            )
+        );
+
+    }
 
 
     refreshIntervals.push(
@@ -590,13 +745,34 @@ document.addEventListener(
 
         if (existingToken) {
 
+            const payload =
+                decodeJwtPayload(existingToken);
+
+            const role =
+                payload?.role?.toLowerCase();
+
+            const validRoles = [
+                "admin",
+                "analyst",
+                "viewer"
+            ];
+
+            if (
+                !payload ||
+                !validRoles.includes(role) ||
+                (payload.exp && payload.exp <= Date.now() / 1000)
+            ) {
+                logout();
+                return;
+            }
+
+            saveUserRole(role);
+
             unlockDashboard();
 
-
             addLogoutButton(
-                "admin"
+                payload.username || payload.sub || "user"
             );
-
 
             initializeDashboard();
 
@@ -1296,6 +1472,104 @@ async function loadSecurityAlerts() {
 
 
 // ============================================================
+// INCIDENT LIFECYCLE MANAGEMENT — ADMIN ONLY
+// ============================================================
+
+function getNextIncidentStatuses(status) {
+
+    const transitions = {
+        OPEN: ["INVESTIGATING"],
+        INVESTIGATING: ["CONTAINED"],
+        CONTAINED: ["RESOLVED"],
+        RESOLVED: ["CLOSED"],
+        CLOSED: []
+    };
+
+    return transitions[
+        String(status || "OPEN").toUpperCase()
+    ] || [];
+
+}
+
+
+// ============================================================
+// UPDATE INCIDENT LIFECYCLE STATUS
+// ============================================================
+
+async function updateIncidentLifecycle(
+    incidentId,
+    status,
+    button
+) {
+
+    if (currentUserRole !== "admin") {
+        alert("Only administrators can update incident status.");
+        return;
+    }
+
+    if (!incidentId || !status) {
+        alert("Incident ID and status are required.");
+        return;
+    }
+
+    try {
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Updating...";
+        }
+
+        const params = new URLSearchParams({
+            status: status,
+            notes: "Incident status updated from dashboard by admin"
+        });
+
+        const response = await apiFetch(
+            `${API}/security/incidents/${encodeURIComponent(incidentId)}/status?${params.toString()}`,
+            {
+                method: "POST"
+            }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail || `HTTP ${response.status}`
+            );
+        }
+
+        alert(`Incident status updated to ${status}.`);
+
+        await loadSecurityIncidents();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "INCIDENT STATUS UPDATE ERROR:",
+            error
+        );
+
+        alert(
+            `Unable to update incident status: ${error.message}`
+        );
+
+    }
+
+    finally {
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Update";
+        }
+
+    }
+
+}
+
+// ============================================================
 // SECURITY INCIDENTS
 // ============================================================
 
@@ -1371,7 +1645,7 @@ async function loadSecurityIncidents() {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="12">
+                    <td colspan="14">
                         No security incidents detected
                     </td>
                 </tr>
@@ -1649,12 +1923,92 @@ async function loadSecurityIncidents() {
                         }
                     </td>
 
+                    <td>
+                        ${incident.lifecycle_status || "OPEN"}
+                    </td>
+
+                    <td></td>
                 `;
 
 
                 // Add row to table
 
-                table.appendChild(row);
+                // =====================================================
+// ADMIN INCIDENT LIFECYCLE CONTROLS
+// =====================================================
+
+const actionCell = row.lastElementChild;
+
+const incidentStatus = String(
+    incident.lifecycle_status || "OPEN"
+).toUpperCase();
+
+if (currentUserRole === "admin") {
+
+    const nextStatuses =
+        getNextIncidentStatuses(incidentStatus);
+
+    if (nextStatuses.length > 0 && incident.incident_id) {
+
+        const statusSelect =
+            document.createElement("select");
+
+        statusSelect.style.marginRight = "8px";
+
+        statusSelect.setAttribute(
+            "aria-label",
+            "Next incident lifecycle status"
+        );
+
+        nextStatuses.forEach((status) => {
+
+            const option =
+                document.createElement("option");
+
+            option.value = status;
+            option.textContent = status;
+
+            statusSelect.appendChild(option);
+
+        });
+
+        const updateButton =
+            document.createElement("button");
+
+        updateButton.textContent = "Update";
+
+        updateButton.addEventListener("click", () => {
+
+            updateIncidentLifecycle(
+                incident.incident_id,
+                statusSelect.value,
+                updateButton
+            );
+
+        });
+
+        actionCell.appendChild(statusSelect);
+        actionCell.appendChild(updateButton);
+
+    } else {
+
+        actionCell.textContent =
+            incident.incident_id
+                ? "No further transitions"
+                : "Incident ID unavailable";
+
+    }
+
+} else {
+
+    actionCell.textContent = "Read only";
+
+}
+
+
+// Add row to table
+
+table.appendChild(row);
 
             }
         );
@@ -1685,7 +2039,7 @@ async function loadSecurityIncidents() {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="12">
+                    <td colspan="14">
                         Unable to load security incident data
                     </td>
                 </tr>

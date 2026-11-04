@@ -9,11 +9,12 @@ from backend.auth.password import (
 from backend.database import engine
 
 
-def create_admin_user():
+def create_user():
 
     username = input(
-        "Enter admin username: "
+        "Enter username: "
     ).strip()
+
 
     if not username:
 
@@ -24,12 +25,34 @@ def create_admin_user():
         return
 
 
+    role = input(
+        "Enter role (admin/analyst/viewer): "
+    ).strip().lower()
+
+
+    valid_roles = {
+        "admin",
+        "analyst",
+        "viewer"
+    }
+
+
+    if role not in valid_roles:
+
+        print(
+            "❌ Invalid role."
+        )
+
+        return
+
+
     password = getpass.getpass(
-        "Enter admin password: "
+        "Enter password: "
     )
 
+
     confirm_password = getpass.getpass(
-        "Confirm admin password: "
+        "Confirm password: "
     )
 
 
@@ -92,22 +115,24 @@ def create_admin_user():
                 (
                     :username,
                     :password_hash,
-                    'admin',
+                    :role,
                     TRUE
                 )
             """),
             {
                 "username": username,
-                "password_hash": password_hash
+                "password_hash": password_hash,
+                "role": role
             }
         )
 
 
     print(
-        f"✅ Admin user '{username}' created successfully."
+        f"✅ User '{username}' "
+        f"with role '{role}' created successfully."
     )
 
 
 if __name__ == "__main__":
 
-    create_admin_user()
+    create_user()
