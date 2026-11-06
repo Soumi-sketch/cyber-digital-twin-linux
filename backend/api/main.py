@@ -3,15 +3,15 @@ from backend.security.incident_engine import (
     detect_ssh_incidents,
     correlate_incidents
 )
+
 from backend.security.incident_manager import (
-    ensure_incident_open,
     get_incident_status,
     get_incident_history,
     update_incident_status
 )
+
 from backend.security.response_engine import generate_response
-from backend.security.response_executor import execute_response
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -495,23 +495,28 @@ def get_security_incidents(
 
     for incident in incidents:
 
-        # Automatically register the incident
-        # in the incident lifecycle system
-        lifecycle = ensure_incident_open(
+        lifecycle = get_incident_status(
             incident["incident_id"]
         )
 
-        # Add lifecycle information
-        # to the API response
-        incident["lifecycle_status"] = (
-            lifecycle["status"]
-        )
+        if lifecycle:
 
-        incident["lifecycle_updated_at"] = (
-            lifecycle["updated_at"]
-        )
+            incident["lifecycle_status"] = (
+                lifecycle["status"]
+            )
 
-        # Generate security response
+            incident["lifecycle_updated_at"] = (
+                lifecycle["updated_at"]
+            )
+
+        else:
+
+            incident["lifecycle_status"] = (
+                "NOT_REGISTERED"
+            )
+
+            incident["lifecycle_updated_at"] = None
+
         response = generate_response(incident)
 
         incident["recommended_action"] = (
@@ -604,6 +609,11 @@ def get_security_incident_history(
 
 @app.get("/security/responses")
 def security_responses(
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=200
+    ),
     current_user = Depends(
         require_roles(
             {"admin"}
@@ -611,100 +621,32 @@ def security_responses(
     )
 ):
 
-    incidents = detect_ssh_incidents()
+    with engine.connect() as connection:
 
-    responses = []
-
-    for incident in incidents:
-
-        # Generate explainable AI security decision
-        decision = generate_security_decision(
-            incident
-        )
-
-        # Safely simulate response execution
-        execution = execute_response(
-            decision
-        )
-
-        responses.append({
-
-            "incident_id": decision.get(
-                "incident_id"
-            ),
-
-            "incident_type": decision.get(
-                "incident_type",
-                incident.get("incident_type")
-            ),
-
-            "severity": decision.get(
-                "severity",
-                incident.get("severity")
-            ),
-
-            "source_ip": decision.get(
-                "source_ip",
-                incident.get("source_ip")
-            ),
-
-            "threat_score": decision.get(
-                "threat_score",
-                0
-            ),
-
-            "priority": decision.get(
-                "priority",
-                "P4"
-            ),
-
-            "ai_decision": decision.get(
-                "decision",
-                "UNKNOWN"
-            ),
-
-            "recommended_action": decision.get(
-                "recommended_action",
-                "UNKNOWN"
-            ),
-
-            "explanation": decision.get(
-                "explanation",
-                "-"
-            ),
-
-            "confidence_score": decision.get(
-                "confidence_score",
-                0
-            ),
-
-            "confidence_level": decision.get(
-                "confidence_level",
-                "LOW"
-            ),
-
-            "execution_mode": execution.get(
-                "mode"
-            ),
-
-            "executed": execution.get(
-                "executed",
-                False
-            ),
-
-            "execution_action": execution.get(
-                "action",
-                "UNKNOWN"
-            ),
-
-            "execution_message": execution.get(
-                "message",
-                "-"
-            )
-
+        result = connection.execute(text("""
+            SELECT
+                incident_id,
+                incident_type,
+                severity,
+                source_ip,
+                threat_score,
+                priority,
+                ai_decision,
+                recommended_action,
+                confidence_score,
+                confidence_level,
+                execution_mode,
+                executed,
+                execution_action,
+                execution_message
+            FROM security_response_audit
+            ORDER BY created_at DESC
+            LIMIT :limit;
+        """), {
+            "limit": limit
         })
 
-    return responses
+        return result.mappings().all()
 
 # ============================================================
 # SECURITY RESPONSE AUDIT API

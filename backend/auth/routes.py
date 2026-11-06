@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
-
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -148,8 +147,11 @@ def reset_login_attempts(username):
 
 @router.post("/login")
 @limiter.limit("5/minute")
-def login(request: Request, credentials: LoginRequest):
-
+def login(
+    request: Request,
+    response: Response,
+    credentials: LoginRequest
+):
     username = credentials.username.strip()
 
     if is_account_locked(username):
