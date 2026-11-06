@@ -12,6 +12,10 @@ from backend.security.incident_manager import (
 from backend.security.response_engine import generate_response
 from backend.security.response_executor import execute_response
 from fastapi import FastAPI, HTTPException
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from backend.security.rate_limiter import limiter
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +51,15 @@ app = FastAPI(
     title="AI Powered Cyber Digital Twin",
     version="1.0"
 )
+
+app.state.limiter = limiter
+
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler
+)
+
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(
     auth_router

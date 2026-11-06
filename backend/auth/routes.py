@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -14,7 +14,7 @@ from backend.auth.jwt_handler import (
 from backend.auth.dependencies import get_current_user
 
 from backend.database import engine
-
+from backend.security.rate_limiter import limiter
 
 router = APIRouter(
     prefix="/auth",
@@ -147,7 +147,8 @@ def reset_login_attempts(username):
 
 
 @router.post("/login")
-def login(credentials: LoginRequest):
+@limiter.limit("5/minute")
+def login(request: Request, credentials: LoginRequest):
 
     username = credentials.username.strip()
 
