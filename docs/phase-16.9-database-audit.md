@@ -83,3 +83,22 @@ cyber-digital-twin-backup.timer
 
 Backup script:
 /usr/local/sbin/backup-cyber-digital-twin.sh
+
+## Module 16.9.4 — Backup Integrity Verification
+
+Status: COMPLETE
+
+- PostgreSQL custom-format archive readability: PASSED
+- Backup database version: PostgreSQL 16.13
+- Archive TOC entries: 85
+- SHA-256 checksum generation: PASSED
+- Repeated checksum comparison: PASSED
+- SHA256SUMS manifest created: PASSED
+- Manifest permissions: 600
+- Checksum verification using sha256sum -c: PASSED
+
+Verified backup:
+cyber_digital_twin_20261107_155216.dump
+
+Verification result:
+OK
