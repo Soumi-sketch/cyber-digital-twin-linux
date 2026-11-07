@@ -102,3 +102,24 @@ cyber_digital_twin_20261107_155216.dump
 
 Verification result:
 OK
+
+## Module 16.9.5 — Database Restoration Testing
+
+Status: COMPLETE
+
+- Temporary database: cyber_restore_test
+- Production database modified: NO
+- PostgreSQL restore command exit code: 0
+- Restored tables: 9
+- Production/restored row counts: MATCHED
+- Total restored rows: 15,635
+- pgaudit extension restoration: PASSED
+- plpgsql extension restoration: PASSED
+- Indexes verified: 18
+- Constraints verified: 35
+- Temporary database cleanup: PASSED
+- Production database preserved: YES
+
+Restoration verification:
+All nine table row counts matched between the
+production and restored databases.
