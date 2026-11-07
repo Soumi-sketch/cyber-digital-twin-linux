@@ -54,3 +54,32 @@ Status: Pending.
 ## 16.9.6 Security Audit Report
 
 Status: Pending.
+
+## Module 16.9.3 — Secure Automated PostgreSQL Backups
+
+Status: COMPLETE
+
+- Dedicated database backup role: cyber_backup
+- Backup format: PostgreSQL custom format (-Fc)
+- Backup directory: /var/backups/postgresql
+- Backup directory permissions: 700
+- Backup file permissions: 600
+- Password authentication: PostgreSQL .pgpass
+- Password file: /var/lib/pgsql/.pgpass
+- Automated execution: systemd oneshot service
+- Schedule: Daily at 02:00 IST
+- Persistent timer: Enabled
+- Retention: 14 days
+- Old backup cleanup: Automated
+- Manual backup test: PASSED
+- Systemd backup test: PASSED
+- Archive verification: PASSED
+
+Backup service:
+cyber-digital-twin-backup.service
+
+Backup timer:
+cyber-digital-twin-backup.timer
+
+Backup script:
+/usr/local/sbin/backup-cyber-digital-twin.sh
