@@ -635,6 +635,8 @@ if (responseSection) {
 
     loadSecurityAlerts();
 
+    loadNotificationHistory();
+
     loadSecurityIncidents();
 
     loadSecurityCampaigns();
@@ -724,6 +726,14 @@ function startAutoRefresh() {
             5000
         )
     );
+
+    refreshIntervals.push(
+        setInterval(
+            loadNotificationHistory,
+            5000
+        )
+    );
+
 
 
     refreshIntervals.push(
@@ -1484,6 +1494,118 @@ async function loadSSHEvents() {
             "SSH EVENT ERROR:",
             error
         );
+    }
+}
+
+
+
+// ============================================================
+// INCIDENT NOTIFICATION DELIVERY HISTORY
+// ============================================================
+
+async function loadNotificationHistory() {
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/notification-history?limit=50`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const records = await response.json();
+
+        const table = document.getElementById(
+            "notificationHistoryTable"
+        );
+
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (records.length === 0) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 10;
+            cell.textContent = "No notification history available.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+            return;
+        }
+
+        function formatTime(value) {
+
+            if (!value) {
+                return "-";
+            }
+
+            const date = new Date(value);
+
+            return Number.isNaN(date.getTime())
+                ? "-"
+                : date.toLocaleString();
+        }
+
+        records.forEach(record => {
+
+            const row = document.createElement("tr");
+
+            const showError =
+                currentUserRole === "admin" ||
+                currentUserRole === "analyst";
+
+            const values = [
+                formatTime(record.created_at),
+                record.incident_id,
+                record.severity,
+                record.priority,
+                record.notification_channel,
+                record.delivery_status,
+                record.attempt_count,
+                formatTime(record.last_attempt_at),
+                formatTime(record.sent_at),
+                showError
+                    ? (record.error_message || "-")
+                    : "-"
+            ];
+
+            values.forEach(value => {
+
+                const cell = document.createElement("td");
+
+                cell.textContent =
+                    value === null || value === undefined
+                        ? "-"
+                        : String(value);
+
+                row.appendChild(cell);
+
+            });
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION HISTORY ERROR:",
+            error
+        );
+
     }
 }
 

@@ -1188,6 +1188,70 @@ def security_response_audit(
         return result.mappings().all()
 
 # ============================================================
+# INCIDENT NOTIFICATION HISTORY API
+# ============================================================
+
+@app.get("/security/notification-history")
+def get_notification_history(
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=200
+    ),
+    current_user=Depends(
+        require_roles(
+            {
+                "admin",
+                "analyst",
+                "viewer"
+            }
+        )
+    )
+):
+
+    with engine.connect() as connection:
+
+        result = connection.execute(
+            text("""
+                SELECT
+                    id,
+                    incident_id,
+                    notification_channel,
+                    severity,
+                    threat_score,
+                    priority,
+                    source_ip,
+                    delivery_status,
+                    attempt_count,
+                    last_attempt_at,
+                    sent_at,
+                    error_message,
+                    created_at,
+                    updated_at
+                FROM incident_notification_log
+                ORDER BY created_at DESC, id DESC
+                LIMIT :limit
+            """),
+            {
+                "limit": limit
+            }
+        )
+
+        records = [
+            dict(row)
+            for row in result.mappings().all()
+        ]
+
+        role = current_user.get("role")
+
+        if role == "viewer":
+
+            for record in records:
+                record.pop("error_message", None)
+
+        return records
+
+# ============================================================
 # AI SECURITY DECISION API
 # ============================================================
 
