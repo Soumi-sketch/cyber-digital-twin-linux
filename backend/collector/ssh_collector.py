@@ -204,7 +204,7 @@ def save_ssh_event(event, target_hostname, target_ip):
 
     with engine.begin() as connection:
 
-        connection.execute(
+        result = connection.execute(
             text("""
                 INSERT INTO ssh_events
                 (
@@ -226,6 +226,7 @@ def save_ssh_event(event, target_hostname, target_ip):
                     :target_hostname,
                     :target_ip
                 )
+                RETURNING id
             """),
             {
                 **event,
@@ -233,6 +234,10 @@ def save_ssh_event(event, target_hostname, target_ip):
                 "target_ip": target_ip
             }
         )
+
+        event_id = result.scalar_one()
+
+        return event_id
 
 # ============================================================
 # COLLECT SSH EVENTS
@@ -243,6 +248,7 @@ def collect_ssh_events(client, target_hostname, target_ip):
     logs = get_ssh_logs(client)
 
     events_found = 0
+    new_event_ids = []
 
     for line in logs:
 
@@ -251,7 +257,7 @@ def collect_ssh_events(client, target_hostname, target_ip):
         if not event:
             continue
 
-        # Every SSH user is monitored.
+        # Skip events that are already stored.
 
         if event_exists(
             event["message"],
@@ -260,18 +266,21 @@ def collect_ssh_events(client, target_hostname, target_ip):
         ):
             continue
 
-        save_ssh_event(
+        event_id = save_ssh_event(
             event,
             target_hostname,
             target_ip
         )
+
+        new_event_ids.append(event_id)
 
         print(
             f"🔐 SSH EVENT: "
             f"{event['event_type']} | "
             f"user={event['username']} | "
             f"source={event['source_ip']} | "
-            f"target={target_hostname} ({target_ip})"
+            f"target={target_hostname} ({target_ip}) | "
+            f"id={event_id}"
         )
 
         events_found += 1
@@ -281,6 +290,7 @@ def collect_ssh_events(client, target_hostname, target_ip):
         f"{events_found} new event(s) stored."
     )
 
+    return new_event_ids
 
 # ============================================================
 # RUN DIRECTLY

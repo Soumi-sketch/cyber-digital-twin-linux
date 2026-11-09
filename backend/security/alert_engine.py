@@ -148,3 +148,65 @@ def process_security_alert(
         "event_id": alert["event_id"],
         "notification_results": results
     }
+
+
+def process_new_ssh_events(event_ids):
+
+    if not event_ids:
+        return []
+
+    events = analyze_ssh_events(event_ids=event_ids)
+
+    results = []
+
+    for event in events:
+
+        score = event["risk_score"]
+
+        if score < 50:
+            continue
+
+        if score >= 80:
+            alert_level = "CRITICAL"
+        else:
+            alert_level = "HIGH"
+
+        if event["event_type"] == "FAILED_LOGIN":
+            reason = (
+                f"Repeated failed SSH login attempt "
+                f"from {event['source_ip']}"
+            )
+
+        elif event["event_type"] == "INVALID_USER":
+            reason = (
+                f"Invalid SSH user attempt "
+                f"from {event['source_ip']}"
+            )
+
+        else:
+            reason = "Suspicious SSH activity detected"
+
+        alert = {
+            "event_id": event["id"],
+            "alert_level": alert_level,
+            "risk_score": score,
+            "event_type": event["event_type"],
+            "username": event["username"],
+            "source_ip": event["source_ip"],
+            "reason": reason,
+            "event_time": event["event_time"]
+        }
+
+        try:
+            result = process_security_alert(alert)
+
+        except Exception as error:
+            result = {
+                "status": "error",
+                "event_id": event["id"],
+                "reason": str(error)
+            }
+
+        results.append(result)
+
+    return results

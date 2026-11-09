@@ -166,12 +166,16 @@ def get_risk_level(score):
 # ANALYZE SSH EVENTS
 # ============================================================
 
-def analyze_ssh_events():
+def analyze_ssh_events(event_ids=None):
+
+    if event_ids is not None and not event_ids:
+        return []
 
     with engine.connect() as connection:
 
-        result = connection.execute(
-            text("""
+        if event_ids is None:
+
+            query = text("""
                 SELECT
                     id,
                     event_type,
@@ -182,41 +186,45 @@ def analyze_ssh_events():
                 ORDER BY event_time DESC
                 LIMIT 100
             """)
-        )
+
+            result = connection.execute(query)
+
+        else:
+
+            from sqlalchemy import bindparam
+
+            query = text("""
+                SELECT
+                    id,
+                    event_type,
+                    username,
+                    source_ip,
+                    event_time
+                FROM ssh_events
+                WHERE id IN :event_ids
+                ORDER BY event_time DESC
+            """).bindparams(
+                bindparam("event_ids", expanding=True)
+            )
+
+            result = connection.execute(
+                query,
+                {"event_ids": list(event_ids)}
+            )
 
         events = result.mappings().all()
-
         analyzed_events = []
 
         for event in events:
 
-            # ------------------------------------------------
-            # BASE RISK
-            # ------------------------------------------------
-
             base_score = calculate_base_risk(event)
-
-
-            # ------------------------------------------------
-            # REPEATED ATTACK BONUS
-            # ------------------------------------------------
 
             repeat_bonus = calculate_repeat_bonus(
                 connection,
                 event
             )
 
-
-            # ------------------------------------------------
-            # TOTAL RISK
-            # ------------------------------------------------
-
             total_score = base_score + repeat_bonus
-
-
-            # ------------------------------------------------
-            # BRUTE FORCE DETECTION
-            # ------------------------------------------------
 
             brute_force = detect_bruteforce(
                 connection,
@@ -224,20 +232,10 @@ def analyze_ssh_events():
                 event["event_time"]
             )
 
-
-            # ------------------------------------------------
-            # ATTACK TYPE
-            # ------------------------------------------------
-
             attack_type = None
 
             if brute_force["attack_detected"]:
                 attack_type = brute_force["attack_type"]
-
-
-            # ------------------------------------------------
-            # RISK LEVEL
-            # ------------------------------------------------
 
             risk_level = get_risk_level(total_score)
 
@@ -250,50 +248,23 @@ def analyze_ssh_events():
             ):
                 risk_level = "HIGH"
 
-
-            # ------------------------------------------------
-            # STORE ANALYSIS
-            # ------------------------------------------------
-
             analyzed_events.append({
 
                 "id": event["id"],
-
-                "event_type":
-                    event["event_type"],
-
-                "username":
-                    event["username"],
-
-                "source_ip":
-                    event["source_ip"],
-
-                "event_time":
-                    event["event_time"],
-
-                "base_score":
-                    base_score,
-
-                "repeat_bonus":
-                    repeat_bonus,
-
-                "risk_score":
-                    total_score,
-
-                "risk_level":
-                    risk_level,
-
-                "attack_type":
-                    attack_type,
-
-                "bruteforce_attempts":
-                    brute_force["attempts"]
+                "event_type": event["event_type"],
+                "username": event["username"],
+                "source_ip": event["source_ip"],
+                "event_time": event["event_time"],
+                "base_score": base_score,
+                "repeat_bonus": repeat_bonus,
+                "risk_score": total_score,
+                "risk_level": risk_level,
+                "attack_type": attack_type,
+                "bruteforce_attempts": brute_force["attempts"]
 
             })
 
-
         return analyzed_events
-
 
 # ============================================================
 # DISPLAY SUMMARY

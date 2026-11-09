@@ -12,6 +12,10 @@ from backend.collector.ssh_collector import (
     collect_ssh_events
 )
 
+from backend.security.alert_engine import (
+    process_new_ssh_events
+)
+
 
 # ------------------------------------------------
 # CONFIGURE LOGGING
@@ -96,16 +100,40 @@ while True:
             # COLLECT SSH SECURITY EVENTS
             # ----------------------------------------
 
-            collect_ssh_events(
+            new_event_ids = collect_ssh_events(
                 client,
                 host["name"],
                 host["host"]
             )
 
             logger.info(
-                "SSH events checked: %s",
-                host_name
+                "SSH events checked: %s | New events: %d",
+                host_name,
+                len(new_event_ids or [])
             )
+
+            # ----------------------------------------
+            # PROCESS NEW SECURITY ALERTS
+            # ----------------------------------------
+
+            if new_event_ids:
+
+                try:
+                    alert_results = process_new_ssh_events(
+                        new_event_ids
+                    )
+
+                    logger.info(
+                        "Security alert processing completed: %s | Results: %d",
+                        host_name,
+                        len(alert_results)
+                    )
+
+                except Exception:
+                    logger.exception(
+                        "Security alert processing failed for %s",
+                        host_name
+                    )
 
         except Exception:
 
