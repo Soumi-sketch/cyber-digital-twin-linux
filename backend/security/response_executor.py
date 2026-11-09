@@ -15,7 +15,9 @@ from datetime import datetime, timezone
 
 from backend.database import SessionLocal
 from backend.models.security_response_audit import SecurityResponseAudit
+from backend.utils.logging_config import get_security_logger
 
+security_logger = get_security_logger()
 
 # ============================================================
 # EXECUTION MODE
@@ -97,6 +99,14 @@ def execute_response(decision):
     )
 
     timestamp = datetime.now(timezone.utc).isoformat()
+
+    security_logger.info(
+        "Response decision received incident_id=%s action=%s severity=%s mode=%s",
+        incident_id,
+        action,
+        severity,
+        EXECUTION_MODE
+    )
 
     # --------------------------------------------------------
     # MONITOR
@@ -200,6 +210,12 @@ def execute_response(decision):
 
         if existing_record:
 
+            security_logger.warning(
+                "Duplicate response skipped incident_id=%s action=%s",
+                incident_id,
+                action
+            )
+
             audit_duplicate = True
 
             print(
@@ -251,10 +267,22 @@ def execute_response(decision):
 
             audit_saved = True
 
+            security_logger.info(
+                "Security response audit saved incident_id=%s action=%s",
+                incident_id,
+                action
+            )
+
     except Exception as exc:
 
         if db is not None:
             db.rollback()
+
+        security_logger.error(
+            "Security response audit failed incident_id=%s error_type=%s",
+            incident_id,
+            type(exc).__name__
+        )
 
         print(
             f"[AUDIT ERROR] Could not save "

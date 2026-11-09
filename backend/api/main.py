@@ -11,10 +11,20 @@ from backend.security.incident_manager import (
 )
 
 from backend.security.response_engine import generate_response
+from backend.utils.logging_config import (
+    configure_logging,
+    get_app_logger,
+    get_security_logger
+)
+
+import time
+
 from fastapi import FastAPI, HTTPException, Query
+
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+
 from backend.security.rate_limiter import limiter
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
@@ -51,6 +61,43 @@ app = FastAPI(
     title="AI Powered Cyber Digital Twin",
     version="1.0"
 )
+
+# ============================================================
+# CENTRALIZED LOGGING
+# ============================================================
+
+configure_logging()
+
+logger = get_app_logger()
+security_logger = get_security_logger()
+
+logger.info("Cyber Digital Twin API initialized")
+
+@app.middleware("http")
+async def log_api_requests(request, call_next):
+    start_time = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+
+        logger.info(
+            "HTTP %s %s status=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms
+        )
+
+        return response
+
+    except Exception:
+        logger.exception(
+            "HTTP request failed method=%s path=%s",
+            request.method,
+            request.url.path
+        )
+        raise
 
 app.state.limiter = limiter
 
