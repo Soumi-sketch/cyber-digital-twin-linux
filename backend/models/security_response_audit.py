@@ -85,3 +85,15 @@ class SecurityResponseAudit(Base):
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP")
     )
+
+    executed_by = Column(
+        String(100)
+    )
+
+    executed_by_user_id = Column(
+        Integer
+    )
+
+    execution_reason = Column(
+        String(500)
+    )

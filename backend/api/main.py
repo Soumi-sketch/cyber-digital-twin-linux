@@ -11,6 +11,7 @@ from backend.security.incident_manager import (
 )
 
 from backend.security.response_engine import generate_response
+from backend.security.response_executor import execute_response
 from backend.utils.logging_config import (
     configure_logging,
     get_app_logger,
@@ -63,10 +64,20 @@ from backend.auth.dependencies import (
     require_roles
 )
 
+from pydantic import BaseModel, Field
+
 app = FastAPI(
     title="AI Powered Cyber Digital Twin",
     version="1.0"
 )
+
+class SecurityResponseExecutionRequest(BaseModel):
+
+    reason: str = Field(
+        ...,
+        min_length=5,
+        max_length=500
+    )
 
 # ============================================================
 # CENTRALIZED LOGGING
@@ -794,6 +805,66 @@ def get_security_incident_history(
 
     return history
 
+@app.post("/security/incidents/{incident_id}/execute")
+def execute_security_incident_response(
+    incident_id: str,
+    request: SecurityResponseExecutionRequest,
+    current_user=Depends(
+        require_roles({"admin"})
+    )
+):
+
+    # Find the incident from server-side detection
+    incidents = detect_ssh_incidents()
+
+    incident = next(
+        (
+            item for item in incidents
+            if item["incident_id"] == incident_id
+        ),
+        None
+    )
+
+    if incident is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Security incident not found"
+        )
+
+    # Generate the AI decision on the server
+    decision = generate_security_decision(
+        incident
+    )
+
+    # Execute in DRY-RUN mode only
+    result = execute_response(
+        decision,
+        executed_by=current_user.get("sub"),
+        executed_by_user_id=current_user.get("user_id"),
+        execution_reason=request.reason
+    )
+
+    security_logger.info(
+        "Admin response processed incident_id=%s username=%s mode=%s audit_saved=%s",
+        incident_id,
+        current_user.get("sub"),
+        result["mode"],
+        result["audit_saved"]
+    )
+
+    if not result["audit_saved"] and not result["audit_duplicate"]:
+
+        raise HTTPException(
+            status_code=500,
+            detail="Response audit could not be saved"
+        )
+
+    return {
+        "incident_id": incident_id,
+        **result
+    }
+
 # ============================================================
 # AI SECURITY RESPONSE EXECUTION API
 # ============================================================
@@ -829,7 +900,10 @@ def security_responses(
                 execution_mode,
                 executed,
                 execution_action,
-                execution_message
+                execution_message,
+                executed_by,
+                executed_by_user_id,
+                execution_reason
             FROM security_response_audit
             ORDER BY created_at DESC
             LIMIT :limit;
@@ -875,6 +949,9 @@ def security_response_audit(
                 executed,
                 execution_action,
                 execution_message,
+                executed_by,
+                executed_by_user_id,
+                execution_reason,
                 created_at
             FROM security_response_audit
             ORDER BY created_at DESC

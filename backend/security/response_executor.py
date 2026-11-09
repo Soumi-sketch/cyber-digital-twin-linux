@@ -30,7 +30,12 @@ EXECUTION_MODE = "DRY-RUN"
 # SECURITY RESPONSE EXECUTOR
 # ============================================================
 
-def execute_response(decision):
+def execute_response(
+    decision,
+    executed_by=None,
+    executed_by_user_id=None,
+    execution_reason=None
+):
 
     """
     Safely process an AI security decision.
@@ -258,7 +263,13 @@ def execute_response(decision):
 
                 execution_action=action,
 
-                execution_message=message
+                execution_message=message,
+
+                executed_by=executed_by,
+
+                executed_by_user_id=executed_by_user_id,
+
+                execution_reason=execution_reason
             )
 
             db.add(audit_record)
