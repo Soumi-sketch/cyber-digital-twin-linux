@@ -1,0 +1,16 @@
+[Unit]
+Description=AI Cyber Digital Twin - Linux Metrics and SSH Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/cyber-digital-twin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/root/cyber-digital-twin/venv/bin/python -m backend.scheduler.collector_runner
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
