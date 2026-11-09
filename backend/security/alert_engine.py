@@ -1,37 +1,17 @@
-from datetime import datetime, timedelta
-
-from sqlalchemy import text
-
-from backend.database import engine
 from backend.security.risk_engine import analyze_ssh_events
 
-from backend.notifications.email_service import (
-    send_email_notification
+from backend.security.incident_engine import (
+    detect_ssh_incidents
 )
 
-from backend.notifications.telegram_service import (
-    send_telegram_notification
+from backend.ai.security_decision_engine import (
+    generate_security_decision
 )
 
 from backend.notifications.notification_manager import (
-    send_alert_notifications
+    send_alert_notifications,
+    send_incident_email_notification
 )
-
-def build_notification_message(
-    alert
-):
-
-
-    return (
-        "🚨 CYBER DIGITAL TWIN SECURITY ALERT\n\n"
-        f"Alert Level: {alert['alert_level']}\n"
-        f"Risk Score: {alert['risk_score']}\n"
-        f"Event Type: {alert['event_type']}\n"
-        f"Username: {alert['username']}\n"
-        f"Source IP: {alert['source_ip']}\n"
-        f"Reason: {alert['reason']}\n"
-        f"Event Time: {alert['event_time']}\n"
-    )
 
 def generate_security_alerts():
 
@@ -208,5 +188,60 @@ def process_new_ssh_events(event_ids):
             }
 
         results.append(result)
+
+    # ----------------------------------------
+    # PROCESS CORRELATED SECURITY INCIDENTS
+    # ----------------------------------------
+
+    try:
+
+        incidents = detect_ssh_incidents()
+
+        new_event_set = set(event_ids)
+
+        for incident in incidents:
+
+            # Only process incidents containing new SSH events.
+            related_event_ids = set(
+                incident.get("event_ids", [])
+            )
+
+            if not new_event_set.intersection(
+                related_event_ids
+            ):
+                continue
+
+            # Incident-level email threshold.
+            if incident["severity"] not in (
+                "HIGH",
+                "CRITICAL"
+            ):
+                continue
+
+            decision = generate_security_decision(
+                incident
+            )
+
+            notification_result = (
+                send_incident_email_notification(
+                    incident,
+                    decision
+                )
+            )
+
+            results.append({
+                "status": "incident_notification_processed",
+                "incident_id": incident["incident_id"],
+                "severity": incident["severity"],
+                "priority": decision["priority"],
+                "email_result": notification_result
+            })
+
+    except Exception as error:
+
+        results.append({
+            "status": "incident_notification_error",
+            "reason": str(error)
+        })
 
     return results
