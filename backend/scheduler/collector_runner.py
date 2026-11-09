@@ -1,4 +1,5 @@
 import time
+import logging
 
 from backend.config.hosts import HOSTS
 
@@ -11,8 +12,29 @@ from backend.collector.ssh_collector import (
     collect_ssh_events
 )
 
+
+# ------------------------------------------------
+# CONFIGURE LOGGING
+# ------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+)
+
+logger = logging.getLogger("cyber_collector")
+
+
+# ------------------------------------------------
+# SSH CLIENT STORAGE
+# ------------------------------------------------
+
 clients = {}
 
+
+# ------------------------------------------------
+# CONTINUOUS COLLECTION LOOP
+# ------------------------------------------------
 
 while True:
 
@@ -22,9 +44,9 @@ while True:
 
         try:
 
-            # ------------------------------------------------
+            # ----------------------------------------
             # CHECK / CREATE SSH CONNECTION
-            # ------------------------------------------------
+            # ----------------------------------------
 
             client = clients.get(host_name)
 
@@ -34,9 +56,10 @@ while True:
                 or not client.get_transport().is_active()
             ):
 
-                print(
-                    f"🔌 Creating SSH connection to "
-                    f"{host_name} ({host['host']})..."
+                logger.info(
+                    "Creating SSH connection to %s (%s)",
+                    host_name,
+                    host["host"]
                 )
 
                 if client:
@@ -44,30 +67,34 @@ while True:
                     try:
                         client.close()
                     except Exception:
-                        pass
+                        logger.exception(
+                            "Error closing old connection to %s",
+                            host_name
+                        )
 
                 client = create_ssh_client(host)
 
                 clients[host_name] = client
 
-                print(
-                    f"✅ SSH connection established: "
-                    f"{host_name}"
+                logger.info(
+                    "SSH connection established: %s",
+                    host_name
                 )
 
-            # ------------------------------------------------
+            # ----------------------------------------
             # COLLECT SYSTEM METRICS
-            # ------------------------------------------------
+            # ----------------------------------------
 
             collect_remote_data(client)
 
-            print(
-                f"📊 Metrics collected: {host_name}"
+            logger.info(
+                "Metrics collected: %s",
+                host_name
             )
 
-            # ------------------------------------------------
+            # ----------------------------------------
             # COLLECT SSH SECURITY EVENTS
-            # ------------------------------------------------
+            # ----------------------------------------
 
             collect_ssh_events(
                 client,
@@ -75,15 +102,16 @@ while True:
                 host["host"]
             )
 
-            print(
-                f"🔐 SSH events checked: {host_name}"
+            logger.info(
+                "SSH events checked: %s",
+                host_name
             )
 
-        except Exception as e:
+        except Exception:
 
-            print(
-                f"❌ Collection failed for "
-                f"{host_name}: {e}"
+            logger.exception(
+                "Collection failed for %s",
+                host_name
             )
 
             client = clients.get(host_name)
@@ -93,10 +121,15 @@ while True:
                 try:
                     client.close()
                 except Exception:
-                    pass
+                    logger.exception(
+                        "Error closing failed connection to %s",
+                        host_name
+                    )
 
             clients[host_name] = None
 
-    print("⏳ Waiting 5 seconds for next collection...")
+    logger.info(
+        "Waiting 5 seconds for next collection..."
+    )
 
     time.sleep(5)

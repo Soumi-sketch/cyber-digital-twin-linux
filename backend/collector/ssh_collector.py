@@ -49,7 +49,10 @@ def get_ssh_logs(client):
         "--no-pager"
     )
 
-    stdin, stdout, stderr = client.exec_command(command)
+    stdin, stdout, stderr = client.exec_command(
+        command,
+        timeout=10
+    )
 
     logs = stdout.read().decode().splitlines()
 

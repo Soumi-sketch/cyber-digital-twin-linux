@@ -16,8 +16,10 @@ def create_ssh_client(host_config):
 
     client = paramiko.SSHClient()
 
+    client.load_system_host_keys()
+
     client.set_missing_host_key_policy(
-        paramiko.AutoAddPolicy()
+        paramiko.RejectPolicy()
     )
 
     connect_args = {
@@ -34,7 +36,18 @@ def create_ssh_client(host_config):
 
         connect_args["password"] = host_config["password"]
 
-    client.connect(**connect_args)
+    client.connect(
+        **connect_args,
+        banner_timeout=10,
+        auth_timeout=10,
+        look_for_keys=False,
+        allow_agent=False
+    )
+
+    transport = client.get_transport()
+
+    if transport is not None:
+        transport.set_keepalive(30)
 
     return client
 
@@ -56,7 +69,10 @@ def collect_remote_data(client):
 
     for key, command in commands.items():
 
-        stdin, stdout, stderr = client.exec_command(command)
+        stdin, stdout, stderr = client.exec_command(
+            command,
+            timeout=10
+        )
 
         raw_data[key] = stdout.read().decode().strip()
 
