@@ -19,6 +19,12 @@ from backend.utils.logging_config import (
 
 import time
 
+import shutil
+import psutil
+
+from datetime import datetime, timedelta
+from backend.config.hosts import HOSTS
+
 from fastapi import FastAPI, HTTPException, Query
 
 from slowapi import _rate_limit_exceeded_handler
@@ -452,6 +458,144 @@ def get_health(
         "status": status,
         "collected_at": row["collected_at"]
     }
+
+# ============================================================
+# INFRASTRUCTURE HEALTH MONITORING
+# ============================================================
+
+@app.get("/infrastructure/health")
+def infrastructure_health(
+    current_user=Depends(get_current_user)
+):
+    components = {}
+    host_status = {}
+    score = 0
+
+    # API
+    components["api"] = "Healthy"
+    score += 20
+
+    # DATABASE
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+
+        components["database"] = "Healthy"
+        score += 20
+
+    except Exception:
+        components["database"] = "Critical"
+        logger.exception("Infrastructure database health check failed")
+
+    # COLLECTOR PROCESS
+    import psutil
+
+    collector_running = any(
+        "collector_runner" in " ".join(
+            process.info.get("cmdline") or []
+        )
+        for process in psutil.process_iter(["cmdline"])
+    )
+
+    components["collector"] = (
+        "Healthy" if collector_running else "Critical"
+    )
+
+    if collector_running:
+        score += 20
+
+    # MONITORED HOSTS
+    try:
+        with engine.connect() as connection:
+            result = connection.execute(text("""
+                SELECT hostname, MAX(collected_at) AS last_seen
+                FROM system_metrics
+                GROUP BY hostname;
+            """))
+
+            latest_metrics = {
+                row["hostname"]: row["last_seen"]
+                for row in result.mappings()
+            }
+
+        now = datetime.now()
+
+        for host in HOSTS:
+            hostname = host["name"]
+            last_seen = latest_metrics.get(hostname)
+
+            if last_seen is None:
+                status = "NO_DATA"
+            else:
+                age = (now - last_seen).total_seconds()
+
+                if age <= 30:
+                    status = "Healthy"
+                else:
+                    status = "STALE"
+
+            host_status[hostname] = {
+                "status": status,
+                "last_seen": last_seen
+            }
+
+        if host_status and all(
+            item["status"] == "Healthy"
+            for item in host_status.values()
+        ):
+            score += 20
+
+    except Exception:
+        logger.exception("Infrastructure host health check failed")
+        host_status = {"error": "Host health check unavailable"}
+
+    # CONTROLLER DISK
+    try:
+        disk = shutil.disk_usage("/")
+        disk_percent = round(
+            disk.used / disk.total * 100, 2
+        )
+
+        disk_status = (
+            "Critical" if disk_percent >= 90
+            else "Warning" if disk_percent >= 80
+            else "Healthy"
+        )
+
+        if disk_status == "Healthy":
+            score += 20
+
+        components["controller_disk"] = {
+            "status": disk_status,
+            "usage_percent": disk_percent,
+            "free_gb": round(disk.free / (1024 ** 3), 2)
+        }
+
+    except Exception:
+        logger.exception("Controller disk health check failed")
+        components["controller_disk"] = {
+            "status": "Unknown"
+        }
+
+    overall_status = (
+        "Healthy" if score >= 80
+        else "Warning" if score >= 60
+        else "Critical"
+    )
+
+    logger.info(
+        "Infrastructure health checked score=%s status=%s",
+        score,
+        overall_status
+    )
+
+    return {
+        "health_score": score,
+        "overall_status": overall_status,
+        "components": components,
+        "hosts": host_status
+    }
+
 # ============================================================
 # SSH SECURITY EVENTS
 # ============================================================

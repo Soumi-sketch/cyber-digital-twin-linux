@@ -91,6 +91,7 @@ function decodeJwtPayload(
 
 let refreshIntervals = [];
 
+
 let dashboardInitialized = false;
 
 function getAccessToken() {
@@ -602,6 +603,30 @@ if (responseSection) {
 
     loadDashboard();
 
+    refreshIntervals.push(
+        setInterval(
+            loadDashboard,
+            5000
+        )
+    );
+
+    // Infrastructure health refresh
+    loadInfrastructureHealth();
+
+    refreshIntervals.push(
+        setInterval(
+            loadInfrastructureHealth,
+            5000
+        )
+    );
+
+    refreshIntervals.push(
+        setInterval(
+            loadHistory,
+            5000
+        )
+    );
+
     loadHistory();
 
     loadAnomalies();
@@ -661,6 +686,13 @@ function startAutoRefresh() {
         )
     );
 
+
+    refreshIntervals.push(
+        setInterval(
+            loadInfrastructureHealth,
+            5000
+        )
+    );
 
     refreshIntervals.push(
         setInterval(
@@ -822,6 +854,65 @@ let cpuChart;
 let memoryChart;
 let diskChart;
 
+
+// ============================================================
+// LOAD INFRASTRUCTURE HEALTH
+// ============================================================
+
+async function loadInfrastructureHealth() {
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/infrastructure/health`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        document.getElementById("infraScore").innerText =
+            `${data.health_score}/100`;
+
+        document.getElementById("infraStatus").innerText =
+            data.overall_status;
+
+        document.getElementById("infraApi").innerText =
+            data.components.api;
+
+        document.getElementById("infraDatabase").innerText =
+            data.components.database;
+
+        document.getElementById("infraCollector").innerText =
+            data.components.collector;
+
+        document.getElementById("infraDisk").innerText =
+            `${data.components.controller_disk.usage_percent}% used`;
+
+        document.getElementById("infraHosts").innerText =
+            Object.entries(data.hosts)
+                .map(([name, host]) =>
+                    `${name}: ${host.status}`
+                )
+                .join("\n");
+
+    } catch (error) {
+
+        console.error(
+            "INFRASTRUCTURE HEALTH ERROR:",
+            error
+        );
+
+        document.getElementById("infraStatus").innerText =
+            "Connection Error";
+    }
+}
 
 // ============================================================
 // LOAD CURRENT HEALTH
