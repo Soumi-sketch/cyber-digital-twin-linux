@@ -13,6 +13,10 @@ from backend.notifications.notification_manager import (
     send_incident_email_notification
 )
 
+from backend.notifications.notification_policy import (
+    should_send_notification
+)
+
 def generate_security_alerts():
 
     events = analyze_ssh_events()
@@ -211,10 +215,10 @@ def process_new_ssh_events(event_ids):
             ):
                 continue
 
-            # Incident-level email threshold.
-            if incident["severity"] not in (
-                "HIGH",
-                "CRITICAL"
+            # Enforce severity-based email notification policy.
+            if not should_send_notification(
+                incident["severity"],
+                "email"
             ):
                 continue
 

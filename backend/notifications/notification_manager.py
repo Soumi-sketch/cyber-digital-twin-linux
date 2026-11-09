@@ -2,6 +2,10 @@ from sqlalchemy import text
 
 from backend.database import engine
 
+from backend.notifications.notification_policy import (
+    should_send_notification
+)
+
 from backend.notifications.email_service import (
     send_email_notification
 )
@@ -146,77 +150,100 @@ def send_alert_notifications(
     alert
 ):
 
-    message = build_notification_message(
-        alert
+    severity = alert.get(
+        "alert_level",
+        "LOW"
     )
 
+    email_allowed = should_send_notification(
+        severity,
+        "email"
+    )
+
+    telegram_allowed = should_send_notification(
+        severity,
+        "telegram"
+    )
 
     results = {}
 
+    if not email_allowed:
 
-    if not notification_exists(
-        alert["event_id"],
-        "email"
-    ):
-
-        email_sent = send_email_notification(
-            subject=(
-                "🚨 Cyber Digital Twin "
-                f"{alert['alert_level']} Security Alert"
-            ),
-            message=message
-        )
-
-        results["email"] = email_sent
-
-
-        if email_sent:
-
-            save_notification(
-                alert,
-                "email"
-            )
+        results["email"] = "policy_blocked"
 
     else:
 
-        print(
-            f"📧 Email already sent for "
-            f"event {alert['event_id']}."
-        )
+        if not notification_exists(
+            alert["event_id"],
+            "email"
+        ):
 
-        results["email"] = "duplicate"
+            message = build_notification_message(
+                alert
+            )
 
+            email_sent = send_email_notification(
+                subject=(
+                    "🚨 Cyber Digital Twin "
+                    f"{severity} Security Alert"
+                ),
+                message=message
+            )
 
-    if not notification_exists(
-        alert["event_id"],
-        "telegram"
-    ):
+            results["email"] = email_sent
 
-        telegram_sent = (
-            send_telegram_notification(
+            if email_sent:
+
+                save_notification(
+                    alert,
+                    "email"
+                )
+
+        else:
+
+            print(
+                f"📧 Email already sent for "
+                f"event {alert['event_id']}."
+            )
+
+            results["email"] = "duplicate"
+
+    if not telegram_allowed:
+
+        results["telegram"] = "policy_blocked"
+
+    else:
+
+        if not notification_exists(
+            alert["event_id"],
+            "telegram"
+        ):
+
+            message = build_notification_message(
+                alert
+            )
+
+            telegram_sent = send_telegram_notification(
                 message
             )
-        )
 
-        results["telegram"] = telegram_sent
+            results["telegram"] = telegram_sent
 
+            if telegram_sent:
 
-        if telegram_sent:
+                save_notification(
+                    alert,
+                    "telegram"
+                )
 
-            save_notification(
-                alert,
-                "telegram"
+        else:
+
+            print(
+                f"📱 Telegram already sent for "
+                f"event {alert['event_id']}."
             )
 
-    else:
-
-        print(
-            f"📱 Telegram already sent for "
-            f"event {alert['event_id']}."
-        )
-
-        results["telegram"] = "duplicate"
-
+            results["telegram"] = "duplicate"
 
     return results
 
@@ -233,6 +260,18 @@ def send_incident_email_notification(
     """
 
     incident_id = incident["incident_id"]
+
+    severity = incident.get(
+        "severity",
+        "LOW"
+    )
+
+    if not should_send_notification(
+        severity,
+        "email"
+    ):
+
+        return "policy_blocked"
 
     # Reserve the notification attempt in the database.
     with engine.begin() as connection:
