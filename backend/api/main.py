@@ -719,6 +719,28 @@ def get_security_incidents(
 
             incident["lifecycle_updated_at"] = None
 
+        # AI SECURITY INTELLIGENCE
+
+        ai_decision = generate_security_decision(
+            incident
+        )
+
+        incident["threat_score"] = (
+            ai_decision["threat_score"]
+        )
+
+        incident["priority"] = (
+            ai_decision["priority"]
+        )
+
+        incident["ai_decision"] = (
+            ai_decision["decision"]
+        )
+
+        incident["decision_explanation"] = (
+            ai_decision["explanation"]
+        )
+
         response = generate_response(incident)
 
         incident["recommended_action"] = (

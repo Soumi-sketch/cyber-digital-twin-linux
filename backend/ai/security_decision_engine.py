@@ -160,23 +160,56 @@ def calculate_threat_score(incident: Dict) -> int:
 # ============================================================
 
 def determine_priority(
-    threat_score: int
+    threat_score: int,
+    severity: str = "LOW"
 ) -> str:
 
+    # Priority calculated from AI threat score
     if threat_score >= 80:
 
-        return "P1"
+        score_priority = "P1"
 
-    if threat_score >= 60:
+    elif threat_score >= 60:
 
-        return "P2"
+        score_priority = "P2"
 
-    if threat_score >= 40:
+    elif threat_score >= 40:
 
-        return "P3"
+        score_priority = "P3"
 
-    return "P4"
+    else:
 
+        score_priority = "P4"
+
+    # Minimum priority based on confirmed incident severity
+    severity_priority = {
+        "CRITICAL": "P1",
+        "HIGH": "P2",
+        "MEDIUM": "P3",
+        "LOW": "P4"
+    }
+
+    minimum_priority = severity_priority.get(
+        str(severity).upper(),
+        "P4"
+    )
+
+    # Lower P number means higher urgency
+    priority_rank = {
+        "P1": 1,
+        "P2": 2,
+        "P3": 3,
+        "P4": 4
+    }
+
+    if (
+        priority_rank[score_priority]
+        <= priority_rank[minimum_priority]
+    ):
+
+        return score_priority
+
+    return minimum_priority
 
 # ============================================================
 # SECURITY DECISION
@@ -380,7 +413,8 @@ def generate_security_decision(
     )
 
     priority = determine_priority(
-        threat_score
+        threat_score,
+        incident.get("severity", "LOW")
     )
 
     decision = determine_decision(

@@ -327,7 +327,7 @@ def build_incident(
             incident_id,
 
         "incident_type":
-            "SSH_BRUTE_FORCE",
+            attack_pattern,
 
         "attack_pattern":
             attack_pattern,
