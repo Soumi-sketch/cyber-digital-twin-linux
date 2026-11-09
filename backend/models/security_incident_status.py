@@ -39,6 +39,14 @@ class SecurityIncidentStatus(Base):
         String(500)
     )
 
+    action = Column(
+        String(40)
+    )
+
+    changed_by_user_id = Column(
+        Integer
+    )
+
     updated_at = Column(
         TIMESTAMP,
         server_default=text("CURRENT_TIMESTAMP")

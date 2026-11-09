@@ -7,7 +7,13 @@ from backend.security.incident_engine import (
 from backend.security.incident_manager import (
     get_incident_status,
     get_incident_history,
-    update_incident_status
+    get_incident_workflow,
+    update_incident_status,
+    assign_incident,
+    acknowledge_incident,
+    add_investigation_note,
+    resolve_incident,
+    reopen_incident
 )
 
 from backend.security.response_engine import generate_response
@@ -72,6 +78,40 @@ app = FastAPI(
 )
 
 class SecurityResponseExecutionRequest(BaseModel):
+
+    reason: str = Field(
+        ...,
+        min_length=5,
+        max_length=500
+    )
+
+class IncidentAssignmentRequest(BaseModel):
+
+    assigned_to_user_id: int = Field(
+        ...,
+        gt=0
+    )
+
+
+class IncidentNoteRequest(BaseModel):
+
+    note: str = Field(
+        ...,
+        min_length=1,
+        max_length=500
+    )
+
+
+class IncidentResolutionRequest(BaseModel):
+
+    resolution_summary: str = Field(
+        ...,
+        min_length=5,
+        max_length=1000
+    )
+
+
+class IncidentReopenRequest(BaseModel):
 
     reason: str = Field(
         ...,
@@ -757,24 +797,21 @@ def get_security_incidents(
 
     return incidents
 
+
 # ============================================================
 # SECURITY INCIDENT LIFECYCLE API
 # ============================================================
 
+
 @app.get("/security/incidents/{incident_id}/status")
 def get_security_incident_status(
     incident_id: str,
-    current_user = Depends(
-        get_current_user
-    )
+    current_user=Depends(get_current_user)
 ):
 
-    status = get_incident_status(
-        incident_id
-    )
+    status = get_incident_status(incident_id)
 
     if status is None:
-
         return {
             "incident_id": incident_id,
             "status": "NOT_FOUND"
@@ -783,27 +820,84 @@ def get_security_incident_status(
     return status
 
 
+@app.get("/security/incidents/{incident_id}/history")
+def get_security_incident_history(
+    incident_id: str,
+    current_user=Depends(get_current_user)
+):
+
+    return get_incident_history(incident_id)
+
+
+@app.get("/security/incidents/{incident_id}/workflow")
+def get_security_incident_workflow(
+    incident_id: str,
+    current_user=Depends(get_current_user)
+):
+
+    workflow = get_incident_workflow(incident_id)
+
+    if workflow is None:
+        return {
+            "incident_id": incident_id,
+            "workflow": "NOT_FOUND"
+        }
+
+    return workflow
+
+
 @app.post("/security/incidents/{incident_id}/status")
 def update_security_incident_status(
     incident_id: str,
     status: str,
     notes: str = None,
-    current_user = Depends(
-        require_roles(
-            {"admin"}
-        )
+    current_user=Depends(
+        require_roles({"admin", "analyst"})
     )
 ):
 
-    try:
+    role = current_user.get("role")
+    requested_status = status.strip().upper()
 
-        updated = update_incident_status(
-            incident_id=incident_id,
-            new_status=status,
-            notes=notes
+    if requested_status == "RESOLVED":
+        raise HTTPException(
+            status_code=400,
+            detail="Use the /resolve endpoint with a resolution summary"
         )
 
-        return updated
+    if role == "analyst" and requested_status not in [
+        "INVESTIGATING",
+        "CONTAINED"
+    ]:
+        raise HTTPException(
+            status_code=403,
+            detail="Analysts cannot perform this status transition"
+        )
+
+    if requested_status not in [
+        "INVESTIGATING",
+        "CONTAINED",
+        "CLOSED"
+    ]:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported status update"
+        )
+
+    if requested_status == "CLOSED" and role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Only administrators can close incidents"
+        )
+
+    try:
+
+        return update_incident_status(
+            incident_id=incident_id,
+            new_status=requested_status,
+            notes=notes,
+            changed_by_user_id=current_user.get("user_id")
+        )
 
     except ValueError as e:
 
@@ -813,19 +907,128 @@ def update_security_incident_status(
         )
 
 
-@app.get("/security/incidents/{incident_id}/history")
-def get_security_incident_history(
+@app.post("/security/incidents/{incident_id}/assign")
+def assign_security_incident(
     incident_id: str,
-    current_user = Depends(
-        get_current_user
+    request: IncidentAssignmentRequest,
+    current_user=Depends(
+        require_roles({"admin"})
     )
 ):
 
-    history = get_incident_history(
-        incident_id
-    )
+    try:
 
-    return history
+        return assign_incident(
+            incident_id=incident_id,
+            assigned_to_user_id=request.assigned_to_user_id,
+            changed_by_user_id=current_user.get("user_id")
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@app.post("/security/incidents/{incident_id}/acknowledge")
+def acknowledge_security_incident(
+    incident_id: str,
+    current_user=Depends(
+        require_roles({"admin", "analyst"})
+    )
+):
+
+    try:
+
+        return acknowledge_incident(
+            incident_id=incident_id,
+            acknowledged_by_user_id=current_user.get("user_id")
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@app.post("/security/incidents/{incident_id}/notes")
+def add_security_incident_note(
+    incident_id: str,
+    request: IncidentNoteRequest,
+    current_user=Depends(
+        require_roles({"admin", "analyst"})
+    )
+):
+
+    try:
+
+        return add_investigation_note(
+            incident_id=incident_id,
+            note=request.note,
+            changed_by_user_id=current_user.get("user_id")
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@app.post("/security/incidents/{incident_id}/resolve")
+def resolve_security_incident(
+    incident_id: str,
+    request: IncidentResolutionRequest,
+    current_user=Depends(
+        require_roles({"admin", "analyst"})
+    )
+):
+
+    try:
+
+        return resolve_incident(
+            incident_id=incident_id,
+            resolution_summary=request.resolution_summary,
+            changed_by_user_id=current_user.get("user_id")
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
+@app.post("/security/incidents/{incident_id}/reopen")
+def reopen_security_incident(
+    incident_id: str,
+    request: IncidentReopenRequest,
+    current_user=Depends(
+        require_roles({"admin"})
+    )
+):
+
+    try:
+
+        return reopen_incident(
+            incident_id=incident_id,
+            notes=request.reason,
+            changed_by_user_id=current_user.get("user_id")
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
 
 @app.post("/security/incidents/{incident_id}/execute")
 def execute_security_incident_response(
