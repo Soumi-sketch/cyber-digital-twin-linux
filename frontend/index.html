@@ -471,6 +471,145 @@
 </section>
 
 
+<!-- =====================================================
+     NOTIFICATION ANALYTICS AND REPORTING
+====================================================== -->
+
+<section class="card" id="notificationAnalyticsSection">
+
+    <h2>Notification Analytics & Reporting</h2>
+
+    <p>
+        Historical analysis of notification activity,
+        delivery performance, severity and channels.
+    </p>
+
+    <!-- REPORT FILTERS -->
+
+    <div class="analytics-controls">
+
+        <div>
+            <label for="analyticsPeriod">Reporting Period</label>
+
+            <select id="analyticsPeriod">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="analyticsDays">Date Range</label>
+
+            <select id="analyticsDays">
+                <option value="7">Last 7 Days</option>
+                <option value="30">Last 30 Days</option>
+                <option value="90" selected>Last 90 Days</option>
+                <option value="365">Last 365 Days</option>
+            </select>
+        </div>
+
+        <button
+            type="button"
+            id="analyticsRefreshButton"
+        >
+            Refresh Analytics
+        </button>
+
+    </div>
+
+    <!-- SUMMARY CARDS -->
+
+    <div class="delivery-health-grid">
+
+        <div class="delivery-health-card">
+            <h3>Event Successes</h3>
+            <p id="analyticsEventTotal">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Incident Records</h3>
+            <p id="analyticsIncidentTotal">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Incident Sent</h3>
+            <p id="analyticsIncidentSent">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Incident Failed</h3>
+            <p id="analyticsIncidentFailed">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Incident Pending</h3>
+            <p id="analyticsIncidentPending">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Total Attempts</h3>
+            <p id="analyticsIncidentAttempts">-</p>
+        </div>
+
+    </div>
+
+    <!-- EVENT TREND -->
+
+    <div class="chart-container">
+
+        <h3>Event Notification Trend</h3>
+
+        <canvas id="notificationEventTrendChart"></canvas>
+
+    </div>
+
+    <!-- CHANNEL COMPARISON -->
+
+    <div class="chart-container">
+
+        <h3>Event Channel Comparison</h3>
+
+        <canvas id="notificationChannelChart"></canvas>
+
+    </div>
+
+    <!-- SEVERITY DISTRIBUTION -->
+
+    <div class="chart-container">
+
+        <h3>Event Severity Distribution</h3>
+
+        <canvas id="notificationSeverityChart"></canvas>
+
+    </div>
+
+    <!-- INCIDENT DELIVERY STATUS -->
+
+    <div class="chart-container">
+
+        <h3>Incident Delivery Status</h3>
+
+        <canvas id="incidentDeliveryChart"></canvas>
+
+    </div>
+
+    <div class="chart-container">
+
+        <h3>Incident Retry Attempts by Channel</h3>
+
+        <canvas id="incidentRetryChart"></canvas>
+
+    </div>
+
+    <p id="analyticsUpdated">
+        Waiting for analytics data...
+    </p>
+
+</section>
+
+
+
     <!-- =====================================================
          INCIDENT NOTIFICATION DELIVERY HISTORY
     ====================================================== -->

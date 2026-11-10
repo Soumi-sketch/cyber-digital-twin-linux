@@ -47,6 +47,10 @@ from sqlalchemy import text
 
 from backend.database import engine
 
+from backend.analytics.notification_analytics import (
+    get_notification_analytics
+)
+
 from backend.ai.anomaly_service import analyze_all_metrics
 from backend.notifications.delivery_health_monitor import (
     get_delivery_health
@@ -1285,6 +1289,50 @@ def get_notification_delivery_health(
         raise HTTPException(
             status_code=500,
             detail="Unable to retrieve notification delivery health"
+        )
+
+# ============================================================
+# NOTIFICATION ANALYTICS API
+# ============================================================
+
+@app.get("/security/notification-analytics")
+def notification_analytics_api(
+    days: int = 90,
+    period: str = "daily",
+    current_user=Depends(
+        require_roles(
+            {
+                "admin",
+                "analyst",
+                "viewer"
+            }
+        )
+    )
+):
+
+    try:
+
+        return get_notification_analytics(
+            days=days,
+            period=period
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION ANALYTICS API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve notification analytics"
         )
 
 # ============================================================

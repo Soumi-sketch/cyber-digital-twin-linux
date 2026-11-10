@@ -639,6 +639,29 @@ if (responseSection) {
 
     loadDeliveryHealth();
 
+loadNotificationAnalytics();
+
+document.getElementById(
+    "analyticsRefreshButton"
+)?.addEventListener(
+    "click",
+    loadNotificationAnalytics
+);
+
+document.getElementById(
+    "analyticsPeriod"
+)?.addEventListener(
+    "change",
+    loadNotificationAnalytics
+);
+
+document.getElementById(
+    "analyticsDays"
+)?.addEventListener(
+    "change",
+    loadNotificationAnalytics
+);
+
     loadIncidentReminders();
 
     loadSecurityIncidents();
@@ -882,6 +905,11 @@ let cpuChart;
 let memoryChart;
 let diskChart;
 
+let notificationEventTrendChart;
+let notificationChannelChart;
+let notificationSeverityChart;
+let incidentDeliveryChart;
+let incidentRetryChart;
 
 // ============================================================
 // LOAD INFRASTRUCTURE HEALTH
@@ -3438,6 +3466,331 @@ async function loadDeliveryHealth() {
         updateText(
             "deliveryHealthUpdated",
             "Unable to retrieve delivery health."
+        );
+
+    }
+
+}
+
+
+// ============================================================
+// NOTIFICATION ANALYTICS AND REPORTING
+// ============================================================
+
+async function loadNotificationAnalytics() {
+
+    const updateText = (id, value) => {
+
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = value;
+        }
+
+    };
+
+    try {
+
+        const period =
+            document.getElementById("analyticsPeriod")?.value
+            || "daily";
+
+        const days =
+            document.getElementById("analyticsDays")?.value
+            || "90";
+
+        updateText("analyticsUpdated", "Loading analytics...");
+
+        const response = await apiFetch(
+            `${API}/security/notification-analytics?days=${encodeURIComponent(days)}&period=${encodeURIComponent(period)}`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const events = data.event_notifications || {};
+        const incidents = data.incident_deliveries || {};
+
+        const eventSummary = events.summary || {};
+        const incidentSummary = incidents.summary || {};
+
+        // ----------------------------------------------------
+        // SUMMARY CARDS
+        // ----------------------------------------------------
+
+        updateText(
+            "analyticsEventTotal",
+            eventSummary.total_recorded_successes ?? 0
+        );
+
+        updateText(
+            "analyticsIncidentTotal",
+            incidentSummary.total_records ?? 0
+        );
+
+        updateText(
+            "analyticsIncidentSent",
+            incidentSummary.sent ?? 0
+        );
+
+        updateText(
+            "analyticsIncidentFailed",
+            incidentSummary.failed ?? 0
+        );
+
+        updateText(
+            "analyticsIncidentPending",
+            incidentSummary.pending ?? 0
+        );
+
+        updateText(
+            "analyticsIncidentAttempts",
+            incidentSummary.total_attempts ?? 0
+        );
+
+        // ----------------------------------------------------
+        // DESTROY PREVIOUS CHARTS
+        // ----------------------------------------------------
+
+        [
+            notificationEventTrendChart,
+            notificationChannelChart,
+            notificationSeverityChart,
+            incidentDeliveryChart,
+            incidentRetryChart
+        ].forEach(chart => {
+
+            if (chart) {
+                chart.destroy();
+            }
+
+        });
+
+        // ----------------------------------------------------
+        // EVENT NOTIFICATION TREND
+        // ----------------------------------------------------
+
+        const eventTrend = events.trend || [];
+
+        const eventPeriods = [
+            ...new Set(
+                eventTrend.map(item => item.period_start)
+            )
+        ].sort();
+
+        const eventChannels = [
+            ...new Set(
+                eventTrend.map(item => item.notification_channel)
+            )
+        ];
+
+        const eventDatasets = eventChannels.map(channel => ({
+
+            label: channel.toUpperCase(),
+
+            data: eventPeriods.map(periodStart => {
+
+                const record = eventTrend.find(
+                    item =>
+                        item.period_start === periodStart &&
+                        item.notification_channel === channel
+                );
+
+                return record?.recorded_successes ?? 0;
+
+            }),
+
+            tension: 0.3
+
+        }));
+
+        notificationEventTrendChart = new Chart(
+            document.getElementById("notificationEventTrendChart"),
+            {
+                type: "line",
+
+                data: {
+                    labels: eventPeriods.map(
+                        value => new Date(value).toLocaleDateString()
+                    ),
+                    datasets: eventDatasets
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+        // ----------------------------------------------------
+        // EVENT CHANNEL COMPARISON
+        // ----------------------------------------------------
+
+        const channelRecords = events.by_channel || [];
+
+        notificationChannelChart = new Chart(
+            document.getElementById("notificationChannelChart"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: channelRecords.map(
+                        item => item.notification_channel.toUpperCase()
+                    ),
+
+                    datasets: [{
+                        label: "Recorded Successful Event Notifications",
+
+                        data: channelRecords.map(
+                            item => item.recorded_successes
+                        )
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+        // ----------------------------------------------------
+        // EVENT SEVERITY DISTRIBUTION
+        // ----------------------------------------------------
+
+        const severityRecords = events.by_severity || [];
+
+        notificationSeverityChart = new Chart(
+            document.getElementById("notificationSeverityChart"),
+            {
+                type: "doughnut",
+
+                data: {
+                    labels: severityRecords.map(
+                        item => item.alert_level
+                    ),
+
+                    datasets: [{
+                        label: "Event Notification Successes",
+
+                        data: severityRecords.map(
+                            item => item.recorded_successes
+                        )
+                    }]
+                },
+
+                options: {
+                    responsive: true
+                }
+            }
+        );
+
+        // ----------------------------------------------------
+        // INCIDENT DELIVERY STATUS
+        // ----------------------------------------------------
+
+        incidentDeliveryChart = new Chart(
+            document.getElementById("incidentDeliveryChart"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: ["Sent", "Failed", "Pending"],
+
+                    datasets: [{
+                        label: "Incident Delivery Records",
+
+                        data: [
+                            incidentSummary.sent ?? 0,
+                            incidentSummary.failed ?? 0,
+                            incidentSummary.pending ?? 0
+                        ]
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+        // ----------------------------------------------------
+        // INCIDENT RETRY ATTEMPTS BY CHANNEL
+        // ----------------------------------------------------
+
+        const incidentChannels =
+            incidents.by_channel || [];
+
+        incidentRetryChart = new Chart(
+            document.getElementById("incidentRetryChart"),
+            {
+                type: "bar",
+
+                data: {
+                    labels: incidentChannels.map(
+                        item => item.notification_channel.toUpperCase()
+                    ),
+
+                    datasets: [{
+                        label: "Total Delivery Attempts",
+
+                        data: incidentChannels.map(
+                            item => item.total_attempts
+                        )
+                    }]
+                },
+
+                options: {
+                    responsive: true,
+
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            }
+        );
+
+        updateText(
+            "analyticsUpdated",
+            `Last updated: ${new Date().toLocaleString()} | ${period.toUpperCase()} | Last ${days} days`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION ANALYTICS ERROR:",
+            error
+        );
+
+        updateText(
+            "analyticsUpdated",
+            "Unable to retrieve notification analytics."
         );
 
     }
