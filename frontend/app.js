@@ -645,6 +645,24 @@ if (responseSection) {
 
     loadNotificationAnalytics();
 
+    // Notification Policy Simulator
+
+    loadNotificationSimulationHistory();
+
+    document.getElementById(
+        "runNotificationSimulationButton"
+    )?.addEventListener(
+        "click",
+        runNotificationSimulation
+    );
+
+    document.getElementById(
+        "refreshNotificationSimulationHistoryButton"
+    )?.addEventListener(
+        "click",
+        loadNotificationSimulationHistory
+    );
+
 document.getElementById(
     "analyticsRefreshButton"
 )?.addEventListener(
@@ -4184,6 +4202,250 @@ async function loadNotificationAnalytics() {
             "analyticsUpdated",
             "Unable to retrieve notification analytics."
         );
+
+    }
+
+}
+
+
+// ============================================================
+// PHASE 21.6 FEATURE 8 - NOTIFICATION POLICY SIMULATOR
+// ============================================================
+
+
+// RUN NOTIFICATION POLICY SIMULATION
+
+async function runNotificationSimulation() {
+
+    const severity =
+        document.getElementById(
+            "simulationSeverity"
+        )?.value;
+
+    const message =
+        document.getElementById(
+            "notificationSimulationMessage"
+        );
+
+    const resultsTable =
+        document.getElementById(
+            "notificationSimulationResults"
+        );
+
+    if (!severity || !message || !resultsTable) {
+        return;
+    }
+
+    message.textContent = "Running simulation...";
+
+    resultsTable.textContent = "";
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/notification-simulator`,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    severity: severity
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        message.textContent =
+            `Simulation #${result.simulation_id} completed. ` +
+            "DRY-RUN — NO NOTIFICATIONS SENT.";
+
+        const channels = [
+            {
+                name: "Email",
+                key: "email"
+            },
+            {
+                name: "Telegram",
+                key: "telegram"
+            },
+            {
+                name: "Dashboard",
+                key: "dashboard"
+            }
+        ];
+
+        channels.forEach(channel => {
+
+            const decision =
+                result.channels[channel.key];
+
+            const row = document.createElement("tr");
+
+            const nameCell =
+                document.createElement("td");
+
+            nameCell.textContent = channel.name;
+
+            const statusCell =
+                document.createElement("td");
+
+            statusCell.textContent =
+                decision.allowed
+                    ? "ALLOWED — NOT SENT"
+                    : "BLOCKED BY POLICY";
+
+            const reasonCell =
+                document.createElement("td");
+
+            reasonCell.textContent =
+                decision.reason;
+
+            row.appendChild(nameCell);
+            row.appendChild(statusCell);
+            row.appendChild(reasonCell);
+
+            resultsTable.appendChild(row);
+
+        });
+
+        await loadNotificationSimulationHistory();
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION SIMULATION ERROR:",
+            error
+        );
+
+        message.textContent =
+            "Unable to run notification simulation.";
+
+        resultsTable.textContent = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 3;
+        cell.textContent = "Simulation failed.";
+
+        row.appendChild(cell);
+        resultsTable.appendChild(row);
+
+    }
+
+}
+
+
+// LOAD NOTIFICATION SIMULATION HISTORY
+
+async function loadNotificationSimulationHistory() {
+
+    const table =
+        document.getElementById(
+            "notificationSimulationHistoryTable"
+        );
+
+    if (!table) {
+        return;
+    }
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/notification-simulator/history?limit=50`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const records = await response.json();
+
+        table.textContent = "";
+
+        if (!records.length) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 9;
+
+            cell.textContent =
+                "No simulation history available.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+            return;
+
+        }
+
+        records.forEach(record => {
+
+            const row = document.createElement("tr");
+
+            const values = [
+                record.id,
+                record.severity,
+                record.priority,
+                record.email_allowed ? "ALLOWED" : "BLOCKED",
+                record.telegram_allowed ? "ALLOWED" : "BLOCKED",
+                record.dashboard_allowed ? "ALLOWED" : "BLOCKED",
+                record.simulation_mode,
+                record.simulated_by_username,
+                record.created_at
+                    ? new Date(record.created_at).toLocaleString()
+                    : "-"
+            ];
+
+            values.forEach(value => {
+
+                const cell = document.createElement("td");
+
+                cell.textContent =
+                    value === null || value === undefined
+                        ? "-"
+                        : String(value);
+
+                row.appendChild(cell);
+
+            });
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION SIMULATION HISTORY ERROR:",
+            error
+        );
+
+        table.textContent = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 9;
+
+        cell.textContent =
+            "Unable to load simulation history.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
 
     }
 

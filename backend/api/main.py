@@ -62,6 +62,11 @@ from backend.notifications.notification_settings_manager import (
     get_notification_settings_audit
 )
 
+from backend.notifications.notification_simulator import (
+    simulate_notification_policy,
+    get_notification_simulation_history
+)
+
 from backend.ai.ml_anomaly_detector import (
     train_anomaly_model,
     predict_anomaly
@@ -136,6 +141,14 @@ class IncidentReopenRequest(BaseModel):
 class NotificationSettingUpdateRequest(BaseModel):
 
     enabled: bool
+
+class NotificationSimulationRequest(BaseModel):
+
+    severity: str = Field(
+        ...,
+        min_length=3,
+        max_length=20
+    )
 
 # ============================================================
 # CENTRALIZED LOGGING
@@ -1451,6 +1464,87 @@ def notification_analytics_api(
             status_code=500,
             detail="Unable to retrieve notification analytics"
         )
+
+
+# ============================================================
+# PHASE 21.6 FEATURE 8 - NOTIFICATION POLICY SIMULATOR API
+# ============================================================
+
+@app.post("/security/notification-simulator")
+def notification_simulator_api(
+    request: NotificationSimulationRequest,
+    current_user=Depends(
+        require_roles(
+            {"admin", "analyst", "viewer"}
+        )
+    )
+):
+
+    try:
+
+        return simulate_notification_policy(
+            severity=request.severity,
+            simulated_by_user_id=current_user.get("user_id"),
+            simulated_by_username=current_user.get("sub")
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION SIMULATION API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to simulate notification policy"
+        )
+
+
+@app.get("/security/notification-simulator/history")
+def notification_simulation_history_api(
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=200
+    ),
+    current_user=Depends(
+        require_roles(
+            {"admin", "analyst", "viewer"}
+        )
+    )
+):
+
+    try:
+
+        return get_notification_simulation_history(
+            limit=limit
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION SIMULATION HISTORY API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve simulation history"
+        )
+
 
 # ============================================================
 # INCIDENT ASSIGNMENT AND ACKNOWLEDGEMENT REMINDER API

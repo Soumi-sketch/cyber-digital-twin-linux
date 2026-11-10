@@ -691,6 +691,124 @@
 
 
 
+<!-- =====================================================
+     PHASE 21.6 FEATURE 8 - NOTIFICATION POLICY SIMULATOR
+====================================================== -->
+
+<section class="card" id="notificationSimulatorSection">
+
+    <h2>Notification Policy Simulator</h2>
+
+    <p>
+        Test notification policies for different security
+        severities without sending real notifications.
+    </p>
+
+    <p id="notificationSimulatorMode">
+        DRY-RUN MODE — NOTIFICATIONS WILL NOT BE SENT
+    </p>
+
+    <div class="analytics-controls">
+
+        <div>
+            <label for="simulationSeverity">
+                Select Incident Severity
+            </label>
+
+            <select id="simulationSeverity">
+                <option value="LOW">LOW — P4</option>
+                <option value="MEDIUM">MEDIUM — P3</option>
+                <option value="HIGH">HIGH — P2</option>
+                <option value="CRITICAL">CRITICAL — P1</option>
+            </select>
+        </div>
+
+        <div>
+            <button
+                type="button"
+                id="runNotificationSimulationButton"
+            >
+                Run Simulation
+            </button>
+        </div>
+
+    </div>
+
+    <p id="notificationSimulationMessage">
+        Select a severity and run a simulation.
+    </p>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Policy Decision</th>
+                    <th>Explanation</th>
+                </tr>
+            </thead>
+
+            <tbody id="notificationSimulationResults">
+
+                <tr>
+                    <td colspan="3">
+                        No simulation performed yet.
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <h3>Simulation History</h3>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Severity</th>
+                    <th>Priority</th>
+                    <th>Email</th>
+                    <th>Telegram</th>
+                    <th>Dashboard</th>
+                    <th>Mode</th>
+                    <th>Simulated By</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+
+            <tbody id="notificationSimulationHistoryTable">
+
+                <tr>
+                    <td colspan="9">
+                        Loading simulation history...
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <button
+        type="button"
+        id="refreshNotificationSimulationHistoryButton"
+    >
+        Refresh Simulation History
+    </button>
+
+</section>
+
+
+
     <!-- =====================================================
          INCIDENT NOTIFICATION DELIVERY HISTORY
     ====================================================== -->
