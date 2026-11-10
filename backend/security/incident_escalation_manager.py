@@ -4,7 +4,6 @@
 # ============================================================
 
 import os
-from datetime import datetime, timezone
 
 from sqlalchemy import text
 
@@ -44,15 +43,16 @@ ESCALATION_POLICY = {
 
 
 # ------------------------------------------------------------
-# CURRENT UTC TIME
+# CURRENT DATABASE LOCAL TIME
 # ------------------------------------------------------------
 
 def current_time():
 
-    return datetime.now(
-        timezone.utc
-    ).replace(tzinfo=None)
+    with engine.connect() as connection:
 
+        return connection.execute(
+            text("SELECT LOCALTIMESTAMP")
+        ).scalar_one()
 
 # ------------------------------------------------------------
 # GET INCIDENT LIFECYCLE INFORMATION
@@ -298,7 +298,7 @@ def send_escalation(
         f"Total Attempts: {incident.get('total_attempts')}\n\n"
         "The incident remains unacknowledged.\n"
         "Please investigate immediately.\n\n"
-        "Response Mode: DRY-RUN"
+        "Response Mode: LIVE DELIVERY"
     )
 
     try:
