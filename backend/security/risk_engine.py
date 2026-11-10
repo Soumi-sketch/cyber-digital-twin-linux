@@ -48,7 +48,7 @@ def calculate_repeat_bonus(connection, event):
 
     result = connection.execute(
         text("""
-            SELECT COUNT(*)
+            SELECT COUNT(DISTINCT (message, event_time))
             FROM ssh_events
             WHERE source_ip = :source_ip
               AND event_type IN (
@@ -99,7 +99,7 @@ def detect_bruteforce(
 
     result = connection.execute(
         text("""
-            SELECT COUNT(*)
+            SELECT COUNT(DISTINCT (message, event_time))
             FROM ssh_events
             WHERE source_ip = :source_ip
               AND event_type IN (
@@ -233,10 +233,18 @@ def analyze_ssh_events(event_ids=None):
             )
 
             attack_type = None
+            correlation_type = None
 
             if brute_force["attack_detected"]:
-                attack_type = brute_force["attack_type"]
 
+                if event["event_type"] in (
+                    "FAILED_LOGIN",
+                    "INVALID_USER"
+                ):
+                    attack_type = brute_force["attack_type"]
+
+                elif event["event_type"] == "SUCCESSFUL_LOGIN":
+                    correlation_type = "SSH_BRUTE_FORCE_SUCCESS"
             risk_level = get_risk_level(total_score)
 
             if brute_force["severity"] == "CRITICAL":
@@ -260,6 +268,7 @@ def analyze_ssh_events(event_ids=None):
                 "risk_score": total_score,
                 "risk_level": risk_level,
                 "attack_type": attack_type,
+                "correlation_type": correlation_type,
                 "bruteforce_attempts": brute_force["attempts"]
 
             })

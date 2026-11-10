@@ -5,6 +5,8 @@ from sqlalchemy import text
 
 from backend.database import SessionLocal
 
+from backend.security.incident_engine import detect_ssh_incidents
+
 from backend.models.security_incident_status import (
     SecurityIncidentStatus
 )
@@ -36,6 +38,18 @@ def _now(db: Session):
     return db.execute(
         text("SELECT LOCALTIMESTAMP")
     ).scalar_one()
+
+def _validate_detected_incident(incident_id):
+
+    incidents = detect_ssh_incidents(limit=None)
+
+    if not any(
+        incident.get("incident_id") == incident_id
+        for incident in incidents
+    ):
+        raise ValueError(
+            "Incident does not exist in security detection results"
+        )
 
 def _latest_status(db: Session, incident_id):
 
@@ -242,6 +256,8 @@ def ensure_incident_open(incident_id):
 
     try:
 
+        _validate_detected_incident(incident_id)
+
         incident = _ensure_open_in_session(
             db,
             incident_id
@@ -280,6 +296,9 @@ def update_incident_status(
     db: Session = SessionLocal()
 
     try:
+
+        _validate_detected_incident(incident_id)
+
 
         latest = _latest_status(db, incident_id)
 
@@ -342,6 +361,8 @@ def assign_incident(
 
     try:
 
+        _validate_detected_incident(incident_id)
+
         analyst = _validate_active_analyst(
             db,
             assigned_to_user_id
@@ -396,6 +417,8 @@ def acknowledge_incident(
     db: Session = SessionLocal()
 
     try:
+
+        _validate_detected_incident(incident_id)
 
         latest = _ensure_open_in_session(
             db,
@@ -462,6 +485,8 @@ def add_investigation_note(
 
     try:
 
+        _validate_detected_incident(incident_id)
+
         latest = _latest_status(db, incident_id)
 
         if latest is None:
@@ -523,6 +548,8 @@ def resolve_incident(
     db: Session = SessionLocal()
 
     try:
+
+        _validate_detected_incident(incident_id)
 
         latest = _latest_status(db, incident_id)
 
@@ -587,6 +614,8 @@ def reopen_incident(
     db: Session = SessionLocal()
 
     try:
+
+        _validate_detected_incident(incident_id)
 
         latest = _latest_status(db, incident_id)
 

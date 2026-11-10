@@ -1381,6 +1381,28 @@ async function loadSSHEvents() {
 
         const alerts =
             await alertsResponse.json();
+        const riskResponse = await apiFetch(
+            `${API}/security/risk`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!riskResponse.ok) {
+            throw new Error(
+                `Security risk HTTP ${riskResponse.status}`
+            );
+        }
+
+        const riskEvents = await riskResponse.json();
+
+        const riskMap = new Map();
+
+        riskEvents.forEach(event => {
+            riskMap.set(event.id, event);
+        });
 
 
         const alertMap = new Map();
@@ -1460,18 +1482,16 @@ async function loadSSHEvents() {
 
 
         const highRiskCount =
-            alerts.filter(
-                alert =>
-                    alert.alert_level === "HIGH"
+            riskEvents.filter(
+                event =>
+                    event.risk_level === "HIGH"
             ).length;
-
 
         const criticalCount =
-            alerts.filter(
-                alert =>
-                    alert.alert_level === "CRITICAL"
+            riskEvents.filter(
+                event =>
+                    event.risk_level === "CRITICAL"
             ).length;
-
 
         if (highRiskEvents) {
             highRiskEvents.textContent =
@@ -1491,7 +1511,7 @@ async function loadSSHEvents() {
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         No SSH events found
                     </td>
                 </tr>
@@ -1505,19 +1525,26 @@ async function loadSSHEvents() {
 
             const alert =
                 alertMap.get(event.id);
+            const riskEvent =
+                riskMap.get(event.id);
 
 
             const riskScore =
-                alert
-                    ? alert.risk_score
+                riskEvent
+                    ? riskEvent.risk_score
                     : "-";
-
 
             const riskLevel =
-                alert
-                    ? alert.alert_level
+                riskEvent
+                    ? riskEvent.risk_level
                     : "-";
 
+            const correlation =
+                riskEvent && riskEvent.correlation_type
+                    ? riskEvent.correlation_type
+                    : riskEvent && riskEvent.attack_type
+                        ? riskEvent.attack_type
+                        : "-";
 
             const row =
                 document.createElement("tr");
@@ -1548,6 +1575,10 @@ async function loadSSHEvents() {
 
                 <td>
                     ${riskLevel}
+                </td>
+
+                <td>
+                    ${correlation}
                 </td>
             `;
 

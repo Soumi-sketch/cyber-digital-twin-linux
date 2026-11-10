@@ -3,6 +3,7 @@ import re
 import paramiko
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from sqlalchemy import text
 
@@ -46,6 +47,7 @@ def get_ssh_logs(client):
     command = (
         "journalctl "
         "--since '1 minute ago' "
+        "-o short-iso-precise "
         "--no-pager"
     )
 
@@ -63,7 +65,6 @@ def get_ssh_logs(client):
 
     return logs
 
-
 # ============================================================
 # PARSE JOURNAL TIMESTAMP
 # ============================================================
@@ -71,31 +72,26 @@ def get_ssh_logs(client):
 def parse_event_time(line):
 
     match = re.match(
-        r"^([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{2}:\d{2}:\d{2})",
+        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[+-]\d{2}:\d{2}|Z))",
         line
     )
 
     if not match:
         return None
 
-    month = match.group(1)
-    day = match.group(2)
-    time_part = match.group(3)
-
-    current_year = datetime.now().year
-
     try:
 
-        return datetime.strptime(
-            f"{current_year} {month} {day} {time_part}",
-            "%Y %b %d %H:%M:%S"
+        parsed_time = datetime.fromisoformat(
+            match.group(1).replace("Z", "+00:00")
         )
+
+        return parsed_time.astimezone(
+            ZoneInfo("Asia/Kolkata")
+        ).replace(tzinfo=None)
 
     except ValueError:
 
         return None
-
-
 # ============================================================
 # PARSE SSH EVENT
 # ============================================================
@@ -195,14 +191,63 @@ def event_exists(message, target_hostname, target_ip):
         )
 
         return result.first() is not None
-
 # ============================================================
 # SAVE EVENT
 # ============================================================
 
+
 def save_ssh_event(event, target_hostname, target_ip):
 
     with engine.begin() as connection:
+
+        # Lock the specific message and target.
+        # The lock is automatically released at transaction end.
+
+        connection.execute(
+            text("""
+                SELECT pg_advisory_xact_lock(
+                    hashtextextended(
+                        :lock_key,
+                        0
+                    )
+                )
+            """),
+            {
+                "lock_key": (
+                    f"{target_hostname}|"
+                    f"{target_ip}|"
+                    f"{event['message']}"
+                )
+            }
+        )
+
+        # Check again while holding the lock.
+
+        existing = connection.execute(
+            text("""
+                SELECT id
+                FROM ssh_events
+                WHERE message = :message
+                  AND (
+                      :event_time IS NULL
+                      OR event_time = :event_time
+                  )
+                  AND target_hostname = :target_hostname
+                  AND target_ip = :target_ip
+                LIMIT 1
+            """),
+            {
+                "message": event["message"],
+                "event_time": event["event_time"],
+                "target_hostname": target_hostname,
+                "target_ip": target_ip
+            }
+        ).first()
+
+        if existing:
+            return None
+
+        # Insert only when the event does not exist.
 
         result = connection.execute(
             text("""
@@ -235,13 +280,12 @@ def save_ssh_event(event, target_hostname, target_ip):
             }
         )
 
-        event_id = result.scalar_one()
-
-        return event_id
+        return result.scalar_one()
 
 # ============================================================
 # COLLECT SSH EVENTS
 # ============================================================
+
 
 def collect_ssh_events(client, target_hostname, target_ip):
 
@@ -257,20 +301,18 @@ def collect_ssh_events(client, target_hostname, target_ip):
         if not event:
             continue
 
-        # Skip events that are already stored.
-
-        if event_exists(
-            event["message"],
-            target_hostname,
-            target_ip
-        ):
-            continue
+        # Atomic duplicate check and insertion.
 
         event_id = save_ssh_event(
             event,
             target_hostname,
             target_ip
         )
+
+        # Skip if the event already exists.
+
+        if event_id is None:
+            continue
 
         new_event_ids.append(event_id)
 

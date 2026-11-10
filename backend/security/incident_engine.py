@@ -20,7 +20,7 @@ CORRELATION_WINDOW_MINUTES = 30
 # DETECT SSH INCIDENTS
 # ============================================================
 
-def detect_ssh_incidents():
+def detect_ssh_incidents(limit=500):
 
     incidents = []
 
@@ -37,15 +37,40 @@ def detect_ssh_incidents():
                     target_hostname,
                     target_ip,
                     event_time
-                FROM ssh_events
-                WHERE event_type IN (
-                    'FAILED_LOGIN',
-                    'INVALID_USER'
-                )
-                ORDER BY source_ip ASC, event_time ASC
-                LIMIT 500
+                FROM (
+                    SELECT DISTINCT ON (
+                        message,
+                        event_time,
+                        target_hostname,
+                        target_ip
+                    )
+                        id,
+                        event_type,
+                        username,
+                        source_ip,
+                        target_hostname,
+                        target_ip,
+                        event_time
+                    FROM ssh_events
+                    WHERE event_type IN (
+                        'FAILED_LOGIN',
+                        'INVALID_USER'
+                    )
+                    ORDER BY
+                        message,
+                        event_time,
+                        target_hostname,
+                        target_ip,
+                        id ASC
+                ) AS unique_events
+                ORDER BY
+                    source_ip ASC,
+                    event_time ASC,
+                    id ASC
+                LIMIT :event_limit
                 """
-            )
+            ),
+            {"event_limit": limit}
         )
 
         events = result.mappings().all()
