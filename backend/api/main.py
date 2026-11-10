@@ -1796,3 +1796,295 @@ def security_decisions(
         )
 
     return decisions
+
+
+# ============================================================
+# PHASE 22 - THREAT INTELLIGENCE / IOC MANAGEMENT
+# ============================================================
+
+from typing import Literal
+
+
+class ThreatIndicatorCreate(BaseModel):
+
+    indicator_type: Literal[
+        "IP", "DOMAIN", "URL", "MD5", "SHA1", "SHA256"
+    ]
+
+    indicator_value: str = Field(
+        ...,
+        min_length=3,
+        max_length=500
+    )
+
+    threat_type: str = Field(
+        default="UNKNOWN",
+        max_length=100
+    )
+
+    severity: Literal[
+        "LOW", "MEDIUM", "HIGH", "CRITICAL"
+    ] = "MEDIUM"
+
+    confidence: int = Field(
+        default=50,
+        ge=0,
+        le=100
+    )
+
+    source: str = Field(
+        ...,
+        min_length=2,
+        max_length=150
+    )
+
+    description: str | None = None
+
+
+@app.post("/threat-intelligence/indicators")
+def create_threat_indicator(
+    data: ThreatIndicatorCreate,
+    current_user=Depends(require_roles(["admin"]))
+):
+
+    value = data.indicator_value.strip()
+
+    if not value:
+        raise HTTPException(
+            status_code=400,
+            detail="Indicator value cannot be empty"
+        )
+
+    with engine.begin() as connection:
+
+        result = connection.execute(
+            text("""
+                INSERT INTO threat_indicators
+                (
+                    indicator_type,
+                    indicator_value,
+                    threat_type,
+                    severity,
+                    confidence,
+                    source,
+                    description,
+                    first_seen,
+                    last_seen
+                )
+                VALUES
+                (
+                    :indicator_type,
+                    :indicator_value,
+                    :threat_type,
+                    :severity,
+                    :confidence,
+                    :source,
+                    :description,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT
+                (
+                    indicator_type,
+                    indicator_value,
+                    source
+                )
+                DO UPDATE SET
+                    last_seen = CURRENT_TIMESTAMP,
+                    is_active = TRUE,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING *
+            """),
+            {
+                **data.model_dump(),
+                "indicator_value": value
+            }
+        )
+
+        record = result.mappings().one()
+
+    return {
+        "message": "Threat indicator saved",
+        "indicator": dict(record)
+    }
+
+
+@app.get("/threat-intelligence/indicators")
+def list_threat_indicators(
+    indicator_type: str | None = None,
+    active: bool | None = True,
+    limit: int = Query(default=100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+
+    conditions = []
+    params = {"limit": limit}
+
+    if indicator_type:
+
+        conditions.append(
+            "indicator_type = :indicator_type"
+        )
+
+        params["indicator_type"] = indicator_type.upper()
+
+    if active is not None:
+
+        conditions.append(
+            "is_active = :active"
+        )
+
+        params["active"] = active
+
+    where_clause = (
+        "WHERE " + " AND ".join(conditions)
+        if conditions else ""
+    )
+
+    with engine.connect() as connection:
+
+        result = connection.execute(
+            text(f"""
+                SELECT *
+                FROM threat_indicators
+                {where_clause}
+                ORDER BY created_at DESC
+                LIMIT :limit
+            """),
+            params
+        )
+
+        records = [
+            dict(row)
+            for row in result.mappings().all()
+        ]
+
+    return {
+        "total": len(records),
+        "indicators": records
+    }
+
+
+@app.get("/threat-intelligence/check")
+def check_threat_indicator(
+    indicator_value: str,
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+
+    with engine.connect() as connection:
+
+        record = connection.execute(
+            text("""
+                SELECT *
+                FROM threat_indicators
+                WHERE indicator_value = :value
+                AND is_active = TRUE
+                AND (
+                    expires_at IS NULL
+                    OR expires_at > CURRENT_TIMESTAMP
+                )
+                ORDER BY confidence DESC
+                LIMIT 1
+            """),
+            {"value": indicator_value.strip()}
+        ).mappings().first()
+
+    if record is None:
+
+        return {
+            "indicator": indicator_value,
+            "is_malicious": False,
+            "message": "No active matching IOC found"
+        }
+
+    return {
+        "indicator": indicator_value,
+        "is_malicious": True,
+        "threat": dict(record)
+    }
+
+
+@app.patch("/threat-intelligence/indicators/{indicator_id}/status")
+def update_threat_indicator_status(
+    indicator_id: int,
+    is_active: bool,
+    current_user=Depends(require_roles(["admin"]))
+):
+
+    with engine.begin() as connection:
+
+        result = connection.execute(
+            text("""
+                UPDATE threat_indicators
+                SET
+                    is_active = :is_active,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :indicator_id
+                RETURNING id, indicator_value, is_active
+            """),
+            {
+                "indicator_id": indicator_id,
+                "is_active": is_active
+            }
+        ).mappings().first()
+
+    if result is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Threat indicator not found"
+        )
+
+    return {
+        "message": "Indicator status updated",
+        **dict(result)
+    }
+
+
+# ============================================================
+# PHASE 22 - IP REPUTATION API
+# ============================================================
+
+from backend.security.ip_reputation import check_ip_reputation
+
+
+@app.get("/threat-intelligence/reputation/ip")
+def get_ip_reputation(
+    ip_address: str,
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return check_ip_reputation(ip_address)
+
+# ============================================================
+# PHASE 22 - THREAT INTELLIGENCE FEED API
+# ============================================================
+
+from backend.security.feed_manager import import_feed
+
+
+@app.post("/threat-intelligence/feeds/{source_name}/sync")
+def sync_threat_feed(
+    source_name: str,
+    dry_run: bool = Query(True),
+    current_user=Depends(
+        require_roles(["admin"])
+    )
+):
+    result = import_feed(
+        source_name=source_name,
+        dry_run=dry_run
+    )
+
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=400,
+            detail=result.get("error", "Feed import failed")
+        )
+
+    return result

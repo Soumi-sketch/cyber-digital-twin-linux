@@ -290,6 +290,115 @@
     </section>
 
 
+
+    <!-- =====================================================
+         THREAT INTELLIGENCE DASHBOARD
+    ====================================================== -->
+
+    <section class="card" id="threatIntelligenceSection">
+
+        <h2>Threat Intelligence Dashboard</h2>
+
+        <p>
+            IOC monitoring, malicious IP reputation and
+            threat correlation from SSH security events.
+        </p>
+
+        <button
+            type="button"
+            id="refreshThreatIntelligenceButton">
+            Refresh Threat Intelligence
+        </button>
+
+        <div class="security-summary">
+
+            <div>
+                <span>Total Indicators</span>
+                <strong id="threatTotalIndicators">0</strong>
+            </div>
+
+            <div>
+                <span>Active Indicators</span>
+                <strong id="threatActiveIndicators">0</strong>
+            </div>
+
+            <div>
+                <span>Inactive Indicators</span>
+                <strong id="threatInactiveIndicators">0</strong>
+            </div>
+
+            <div>
+                <span>Malicious SSH Matches</span>
+                <strong id="threatSSHMatches">0</strong>
+            </div>
+
+        </div>
+
+        <h3>IOC Severity Distribution</h3>
+
+        <div class="security-summary">
+
+            <div>
+                <span>Critical</span>
+                <strong id="threatCriticalCount">0</strong>
+            </div>
+
+            <div>
+                <span>High</span>
+                <strong id="threatHighCount">0</strong>
+            </div>
+
+            <div>
+                <span>Medium</span>
+                <strong id="threatMediumCount">0</strong>
+            </div>
+
+            <div>
+                <span>Low</span>
+                <strong id="threatLowCount">0</strong>
+            </div>
+
+        </div>
+
+        <h3>Recent Threat Matches</h3>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Event ID</th>
+                        <th>Event Type</th>
+                        <th>Source IP</th>
+                        <th>Threat Type</th>
+                        <th>Severity</th>
+                        <th>Confidence</th>
+                        <th>Risk Score</th>
+                    </tr>
+                </thead>
+
+                <tbody id="threatMatchesTable">
+
+                    <tr>
+                        <td colspan="7">
+                            Loading threat matches...
+                        </td>
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <p id="threatDashboardStatus">
+            Waiting for threat intelligence data...
+        </p>
+
+    </section>
+
+
     <!-- =====================================================
          SECURITY ALERTS
     ====================================================== -->

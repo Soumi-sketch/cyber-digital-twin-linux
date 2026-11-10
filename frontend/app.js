@@ -633,6 +633,15 @@ if (responseSection) {
 
     loadSSHEvents();
 
+    loadThreatIntelligence();
+
+    document.getElementById(
+        "refreshThreatIntelligenceButton"
+    )?.addEventListener(
+        "click",
+        loadThreatIntelligence
+    );
+
     loadSecurityAlerts();
 
     loadNotificationHistory();
@@ -847,6 +856,13 @@ function startAutoRefresh() {
         setInterval(
             loadSecurityDecisions,
             5000
+        )
+    );
+
+    refreshIntervals.push(
+        setInterval(
+            loadThreatIntelligence,
+            30000
         )
     );
 
@@ -4484,6 +4500,172 @@ async function loadNotificationSimulationHistory() {
 
         row.appendChild(cell);
         table.appendChild(row);
+
+    }
+
+}
+
+
+// ============================================================
+// PHASE 22 - THREAT INTELLIGENCE DASHBOARD
+// ============================================================
+
+async function loadThreatIntelligence() {
+
+    const status =
+        document.getElementById("threatDashboardStatus");
+
+    const table =
+        document.getElementById("threatMatchesTable");
+
+    if (!table) return;
+
+    try {
+
+        const [activeIocResponse, inactiveIocResponse, riskResponse] =
+            await Promise.all([
+
+                apiFetch(
+                    `${API}/threat-intelligence/indicators?active=true&limit=500`,
+                    { method: "GET", cache: "no-store" }
+                ),
+
+                apiFetch(
+                    `${API}/threat-intelligence/indicators?active=false&limit=500`,
+                    { method: "GET", cache: "no-store" }
+                ),
+
+                apiFetch(
+                    `${API}/security/risk`,
+                    { method: "GET", cache: "no-store" }
+                )
+
+            ]);
+
+        if (
+            !activeIocResponse.ok ||
+            !inactiveIocResponse.ok ||
+            !riskResponse.ok
+        ) {
+            throw new Error("Threat intelligence API request failed");
+        }
+
+        const activeIocData = await activeIocResponse.json();
+        const inactiveIocData = await inactiveIocResponse.json();
+        const riskEvents = await riskResponse.json();
+
+        const activeIndicators = activeIocData.indicators || [];
+        const inactiveIndicators = inactiveIocData.indicators || [];
+
+        const indicators = [
+            ...activeIndicators,
+            ...inactiveIndicators
+        ];
+
+        const setValue = (id, value) => {
+
+            const element = document.getElementById(id);
+
+            if (element) element.textContent = String(value);
+
+        };
+
+        setValue("threatTotalIndicators", indicators.length);
+        setValue("threatActiveIndicators", activeIndicators.length);
+        setValue("threatInactiveIndicators", inactiveIndicators.length);
+
+        const severityCounts = {
+            CRITICAL: 0,
+            HIGH: 0,
+            MEDIUM: 0,
+            LOW: 0
+        };
+
+        activeIndicators.forEach(item => {
+
+            const severity = String(item.severity || "").toUpperCase();
+
+            if (severityCounts[severity] !== undefined) {
+                severityCounts[severity]++;
+            }
+
+        });
+
+        setValue("threatCriticalCount", severityCounts.CRITICAL);
+        setValue("threatHighCount", severityCounts.HIGH);
+        setValue("threatMediumCount", severityCounts.MEDIUM);
+        setValue("threatLowCount", severityCounts.LOW);
+
+        const maliciousEvents = riskEvents.filter(
+            event =>
+                event.threat_intelligence?.is_malicious === true
+        );
+
+        setValue("threatSSHMatches", maliciousEvents.length);
+
+        table.textContent = "";
+
+        if (maliciousEvents.length === 0) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 7;
+            cell.textContent = "No malicious SSH matches detected.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+        } else {
+
+            maliciousEvents.slice(0, 20).forEach(event => {
+
+                const threat = event.threat_intelligence;
+
+                const row = document.createElement("tr");
+
+                const values = [
+                    event.id,
+                    event.event_type,
+                    event.source_ip,
+                    threat.threat_type || "-",
+                    threat.severity || "-",
+                    threat.confidence ?? "-",
+                    event.risk_score
+                ];
+
+                values.forEach(value => {
+
+                    const cell = document.createElement("td");
+
+                    cell.textContent =
+                        value === null || value === undefined
+                            ? "-"
+                            : String(value);
+
+                    row.appendChild(cell);
+
+                });
+
+                table.appendChild(row);
+
+            });
+
+        }
+
+        if (status) {
+            status.textContent =
+                `Updated successfully. ${indicators.length} indicators checked.`;
+        }
+
+    } catch (error) {
+
+        console.error("THREAT INTELLIGENCE DASHBOARD ERROR:", error);
+
+        if (status) {
+            status.textContent =
+                "Unable to load threat intelligence data.";
+        }
 
     }
 

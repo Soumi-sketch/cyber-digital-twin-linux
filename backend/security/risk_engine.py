@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from backend.database import engine
 
+from backend.security.threat_enrichment import enrich_ssh_event
 
 # ============================================================
 # BASE RISK
@@ -224,7 +225,32 @@ def analyze_ssh_events(event_ids=None):
                 event
             )
 
-            total_score = base_score + repeat_bonus
+            threat_data = enrich_ssh_event(event)
+            threat_info = threat_data["threat_intelligence"]
+
+            threat_bonus = 0
+
+            if (
+                threat_info["is_malicious"]
+                and threat_info["confidence"] is not None
+                and int(threat_info["confidence"]) >= 50
+            ):
+                severity_bonus = {
+                    "LOW": 10,
+                    "MEDIUM": 20,
+                    "HIGH": 30,
+                    "CRITICAL": 40
+                }
+
+                threat_bonus = severity_bonus.get(
+                    str(threat_info["severity"]).upper(),
+                    0
+                )
+
+            total_score = min(
+                100,
+                base_score + repeat_bonus + threat_bonus
+            )
 
             brute_force = detect_bruteforce(
                 connection,
@@ -265,12 +291,13 @@ def analyze_ssh_events(event_ids=None):
                 "event_time": event["event_time"],
                 "base_score": base_score,
                 "repeat_bonus": repeat_bonus,
+                "threat_bonus": threat_bonus,
                 "risk_score": total_score,
                 "risk_level": risk_level,
                 "attack_type": attack_type,
                 "correlation_type": correlation_type,
-                "bruteforce_attempts": brute_force["attempts"]
-
+                "bruteforce_attempts": brute_force["attempts"],
+                **threat_data
             })
 
         return analyzed_events
