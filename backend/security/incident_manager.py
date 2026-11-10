@@ -1,5 +1,4 @@
 
-from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -33,9 +32,10 @@ ALLOWED_TRANSITIONS = {
 }
 
 
-def _now():
-    return datetime.now(timezone.utc).replace(tzinfo=None)
-
+def _now(db: Session):
+    return db.execute(
+        text("SELECT LOCALTIMESTAMP")
+    ).scalar_one()
 
 def _latest_status(db: Session, incident_id):
 
@@ -317,7 +317,7 @@ def update_incident_status(
         )
 
         workflow.updated_by_user_id = changed_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         db.commit()
         db.refresh(incident)
@@ -359,7 +359,7 @@ def assign_incident(
 
         workflow.assigned_to_user_id = analyst["id"]
         workflow.updated_by_user_id = changed_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         incident = _append_history(
             db= db,
@@ -411,9 +411,9 @@ def acknowledge_incident(
             raise ValueError("Incident has already been acknowledged")
 
         workflow.acknowledged_by_user_id = acknowledged_by_user_id
-        workflow.acknowledged_at = _now()
+        workflow.acknowledged_at = _now(db)
         workflow.updated_by_user_id = acknowledged_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         incident = _append_history(
             db=db,
@@ -478,7 +478,7 @@ def add_investigation_note(
         )
 
         workflow.updated_by_user_id = changed_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         incident = _append_history(
             db=db,
@@ -541,7 +541,7 @@ def resolve_incident(
 
         workflow.resolution_summary = resolution_summary
         workflow.updated_by_user_id = changed_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         incident = _append_history(
             db=db,
@@ -607,7 +607,7 @@ def reopen_incident(
         workflow.acknowledged_by_user_id = None
         workflow.acknowledged_at = None
         workflow.updated_by_user_id = changed_by_user_id
-        workflow.updated_at = _now()
+        workflow.updated_at = _now(db)
 
         incident = _append_history(
             db=db,
