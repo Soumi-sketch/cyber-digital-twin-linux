@@ -637,6 +637,8 @@ if (responseSection) {
 
     loadNotificationHistory();
 
+    loadIncidentReminders();
+
     loadSecurityIncidents();
 
     loadSecurityCampaigns();
@@ -734,6 +736,13 @@ function startAutoRefresh() {
         )
     );
 
+
+    refreshIntervals.push(
+        setInterval(
+            loadIncidentReminders,
+            5000
+        )
+    );
 
 
     refreshIntervals.push(
@@ -1607,6 +1616,199 @@ async function loadNotificationHistory() {
         );
 
     }
+}
+
+
+
+// ============================================================
+// INCIDENT ASSIGNMENT & ACKNOWLEDGEMENT REMINDERS
+// ============================================================
+
+async function loadIncidentReminders() {
+
+    const table = document.getElementById(
+        "incidentRemindersTable"
+    );
+
+    if (!table) {
+        return;
+    }
+
+    // Viewers do not receive operational reminders.
+    if (currentUserRole === "viewer") {
+
+        table.innerHTML = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 9;
+        cell.textContent = "No operational reminders available.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+
+        return;
+    }
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/reminders?limit=50`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const records = await response.json();
+
+        table.innerHTML = "";
+
+        if (records.length === 0) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 9;
+            cell.textContent = "No incident reminders available.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+            return;
+        }
+
+        function formatTime(value) {
+
+            if (!value) {
+                return "-";
+            }
+
+            const date = new Date(value);
+
+            return Number.isNaN(date.getTime())
+                ? "-"
+                : date.toLocaleString();
+        }
+
+        records.forEach(record => {
+
+            const row = document.createElement("tr");
+
+            const values = [
+                formatTime(record.created_at),
+                record.incident_id,
+                record.severity,
+                record.reminder_type === "UNASSIGNED"
+                    ? "Unassigned Incident"
+                    : "Awaiting Acknowledgement",
+                record.recipient_username || "-",
+                `${record.reminder_after_minutes} minutes`,
+                record.reminder_cycle,
+                record.delivery_status
+            ];
+
+            values.forEach(value => {
+
+                const cell = document.createElement("td");
+
+                cell.textContent =
+                    value === null || value === undefined
+                        ? "-"
+                        : String(value);
+
+                row.appendChild(cell);
+
+            });
+
+            const actionCell = document.createElement("td");
+
+            if (record.delivery_status === "CREATED") {
+
+                const button = document.createElement("button");
+
+                button.type = "button";
+                button.textContent = "Mark as Read";
+                button.className = "reminder-read-button";
+
+                button.addEventListener("click", async () => {
+
+                    button.disabled = true;
+                    button.textContent = "Updating...";
+
+                    try {
+
+                        const readResponse = await apiFetch(
+                            `${API}/security/reminders/${record.id}/read`,
+                            {
+                                method: "POST"
+                            }
+                        );
+
+                        if (!readResponse.ok) {
+                            throw new Error(
+                                `HTTP ${readResponse.status}`
+                            );
+                        }
+
+                        await loadIncidentReminders();
+
+                    } catch (error) {
+
+                        console.error(
+                            "MARK REMINDER AS READ ERROR:",
+                            error
+                        );
+
+                        button.disabled = false;
+                        button.textContent = "Retry";
+
+                    }
+
+                });
+
+                actionCell.appendChild(button);
+
+            } else if (record.delivery_status === "READ") {
+
+                actionCell.textContent = "Read";
+
+            } else {
+
+                actionCell.textContent = "-";
+
+            }
+
+            row.appendChild(actionCell);
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "INCIDENT REMINDER ERROR:",
+            error
+        );
+
+        table.innerHTML = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 9;
+        cell.textContent = "Unable to load incident reminders.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+
+    }
+
 }
 
 

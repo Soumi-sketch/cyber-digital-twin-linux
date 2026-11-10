@@ -1251,6 +1251,231 @@ def get_notification_history(
 
         return records
 
+
+# ============================================================
+# INCIDENT ASSIGNMENT AND ACKNOWLEDGEMENT REMINDER API
+# ============================================================
+
+
+@app.get("/security/reminders")
+def get_security_reminders(
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=200
+    ),
+    current_user=Depends(get_current_user)
+):
+
+    role = str(
+        current_user.get("role", "")
+    ).lower()
+
+    user_id = current_user.get("user_id")
+
+    if role == "viewer":
+        return []
+
+    if role not in ("admin", "analyst"):
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions"
+        )
+
+    if role == "analyst" and user_id is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User identity missing"
+        )
+
+    with engine.connect() as connection:
+
+        if role == "admin":
+
+            result = connection.execute(
+                text("""
+                    SELECT
+                        r.id,
+                        r.incident_id,
+                        r.reminder_cycle,
+                        r.reminder_type,
+                        r.severity,
+                        r.recipient_user_id,
+                        u.username AS recipient_username,
+                        r.recipient_role,
+                        r.reminder_after_minutes,
+                        r.delivery_status,
+                        r.triggered_at,
+                        r.read_at,
+                        r.created_at
+                    FROM security_incident_reminders r
+                    JOIN users u
+                        ON u.id = r.recipient_user_id
+                    ORDER BY r.created_at DESC, r.id DESC
+                    LIMIT :limit
+                """),
+                {"limit": limit}
+            )
+
+        else:
+
+            result = connection.execute(
+                text("""
+                    SELECT
+                        r.id,
+                        r.incident_id,
+                        r.reminder_cycle,
+                        r.reminder_type,
+                        r.severity,
+                        r.recipient_user_id,
+                        u.username AS recipient_username,
+                        r.recipient_role,
+                        r.reminder_after_minutes,
+                        r.delivery_status,
+                        r.triggered_at,
+                        r.read_at,
+                        r.created_at
+                    FROM security_incident_reminders r
+                    JOIN users u
+                        ON u.id = r.recipient_user_id
+                    WHERE r.recipient_user_id = :user_id
+                    ORDER BY r.created_at DESC, r.id DESC
+                    LIMIT :limit
+                """),
+                {
+                    "user_id": user_id,
+                    "limit": limit
+                }
+            )
+
+        return [
+            dict(row)
+            for row in result.mappings().all()
+        ]
+
+
+# ============================================================
+# MARK INCIDENT REMINDER AS READ
+# ============================================================
+
+
+@app.post("/security/reminders/{reminder_id}/read")
+def mark_reminder_as_read(
+    reminder_id: int,
+    current_user=Depends(get_current_user)
+):
+
+    role = str(
+        current_user.get("role", "")
+    ).lower()
+
+    user_id = current_user.get("user_id")
+
+    if role not in ("admin", "analyst"):
+        raise HTTPException(
+            status_code=403,
+            detail="Insufficient permissions"
+        )
+
+    if role == "analyst" and user_id is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User identity missing"
+        )
+
+    with engine.begin() as connection:
+
+        if role == "admin":
+
+            result = connection.execute(
+                text("""
+                    UPDATE security_incident_reminders
+                    SET
+                        delivery_status = 'READ',
+                        read_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :reminder_id
+                    AND delivery_status = 'CREATED'
+                    RETURNING id, delivery_status, read_at
+                """),
+                {"reminder_id": reminder_id}
+            )
+
+        else:
+
+            result = connection.execute(
+                text("""
+                    UPDATE security_incident_reminders
+                    SET
+                        delivery_status = 'READ',
+                        read_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :reminder_id
+                    AND recipient_user_id = :user_id
+                    AND delivery_status = 'CREATED'
+                    RETURNING id, delivery_status, read_at
+                """),
+                {
+                    "reminder_id": reminder_id,
+                    "user_id": user_id
+                }
+            )
+
+        record = result.mappings().first()
+
+        if record is not None:
+
+            return {
+                "message": "Reminder marked as read",
+                **dict(record)
+            }
+
+        # Check whether the reminder exists and is visible.
+        if role == "admin":
+
+            existing = connection.execute(
+                text("""
+                    SELECT id, delivery_status, read_at
+                    FROM security_incident_reminders
+                    WHERE id = :reminder_id
+                """),
+                {"reminder_id": reminder_id}
+            ).mappings().first()
+
+        else:
+
+            existing = connection.execute(
+                text("""
+                    SELECT id, delivery_status, read_at
+                    FROM security_incident_reminders
+                    WHERE id = :reminder_id
+                    AND recipient_user_id = :user_id
+                """),
+                {
+                    "reminder_id": reminder_id,
+                    "user_id": user_id
+                }
+            ).mappings().first()
+
+        if existing is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Reminder not found"
+            )
+
+        if existing["delivery_status"] == "READ":
+
+            return {
+                "message": "Reminder was already read",
+                **dict(existing)
+            }
+
+        raise HTTPException(
+            status_code=409,
+            detail="Reminder cannot be marked as read"
+        )
+
+
 # ============================================================
 # AI SECURITY DECISION API
 # ============================================================

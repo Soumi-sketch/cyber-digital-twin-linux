@@ -20,6 +20,9 @@ from backend.security.incident_escalation_manager import (
     process_incident_escalations
 )
 
+from backend.security.incident_reminder_manager import (
+    process_incident_reminders
+)
 
 # ------------------------------------------------
 # CONFIGURE LOGGING
@@ -185,6 +188,34 @@ while True:
 
         logger.exception(
             "Incident escalation processing failed"
+        )
+
+    # ----------------------------------------
+    # PROCESS INCIDENT ASSIGNMENT REMINDERS
+    # ----------------------------------------
+
+    try:
+
+        reminder_results = process_incident_reminders()
+
+        if reminder_results:
+
+            logger.info(
+                "Incident reminder processing completed | Results: %d",
+                len(reminder_results)
+            )
+
+            for result in reminder_results:
+
+                logger.info(
+                    "Reminder result: %s",
+                    result
+                )
+
+    except Exception:
+
+        logger.exception(
+            "Incident reminder processing failed"
         )
 
     logger.info(
