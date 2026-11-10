@@ -2,8 +2,6 @@
 # INCIDENT ASSIGNMENT AND ACKNOWLEDGEMENT REMINDER MANAGER
 # ============================================================
 
-from datetime import datetime, timezone
-
 from sqlalchemy import text
 
 from backend.database import engine
@@ -24,15 +22,16 @@ REMINDER_POLICY = {
 
 
 # ------------------------------------------------------------
-# CURRENT UTC TIME
+# CURRENT DATABASE LOCAL TIME
 # ------------------------------------------------------------
 
 def current_time():
 
-    return datetime.now(
-        timezone.utc
-    ).replace(tzinfo=None)
+    with engine.connect() as connection:
 
+        return connection.execute(
+            text("SELECT LOCALTIMESTAMP")
+        ).scalar_one()
 
 # ------------------------------------------------------------
 # GET INCIDENT LIFECYCLE AND WORKFLOW
