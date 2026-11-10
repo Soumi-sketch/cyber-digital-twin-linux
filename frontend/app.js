@@ -3868,15 +3868,22 @@ async function loadDeliveryHealth() {
             error
         );
 
-        updateText(
-            "deliveryOverallHealth",
-            "Unavailable"
+        const healthElement = document.getElementById(
+            "deliveryOverallHealth"
         );
 
-        updateText(
-            "deliveryHealthUpdated",
-            "Unable to retrieve delivery health."
+        if (healthElement) {
+            healthElement.textContent = "Unavailable";
+        }
+
+        const updatedElement = document.getElementById(
+            "deliveryHealthUpdated"
         );
+
+        if (updatedElement) {
+            updatedElement.textContent =
+                "Unable to retrieve delivery health.";
+        }
 
     }
 
