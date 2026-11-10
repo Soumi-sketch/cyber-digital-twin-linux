@@ -377,6 +377,99 @@
     </section>
 
 
+<!-- =====================================================
+     NOTIFICATION DELIVERY HEALTH MONITOR
+====================================================== -->
+
+<section class="card">
+
+    <h2>Notification Delivery Health</h2>
+
+    <p>
+        Real-time monitoring of incident notification
+        delivery attempts, channel health and failures.
+    </p>
+
+        <div class="delivery-health-grid">
+        <div class="delivery-health-card">
+            <h3>Overall Health</h3>
+            <p id="deliveryOverallHealth">Loading...</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Total Attempts</h3>
+            <p id="deliveryTotalAttempts">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Successful</h3>
+            <p id="deliverySent">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Failed</h3>
+            <p id="deliveryFailed">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Pending</h3>
+            <p id="deliveryPending">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Overdue</h3>
+            <p id="deliveryOverdue">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Success Rate</h3>
+            <p id="deliverySuccessRate">-</p>
+        </div>
+
+        <div class="delivery-health-card">
+            <h3>Failure Rate</h3>
+            <p id="deliveryFailureRate">-</p>
+        </div>
+
+    </div>
+
+    <h3>Notification Channel Health</h3>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Health</th>
+                    <th>Total Records</th>
+                    <th>Sent</th>
+                    <th>Failed</th>
+                    <th>Pending</th>
+                    <th>Attempts</th>
+                    <th>Success Rate</th>
+                </tr>
+            </thead>
+
+            <tbody id="deliveryChannelTable">
+                <tr>
+                    <td colspan="8">
+                        Loading delivery health...
+                    </td>
+                </tr>
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <p id="deliveryHealthUpdated">
+        Waiting for monitoring data...
+    </p>
+
+</section>
+
 
     <!-- =====================================================
          INCIDENT NOTIFICATION DELIVERY HISTORY

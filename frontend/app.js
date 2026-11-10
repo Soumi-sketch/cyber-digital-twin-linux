@@ -637,6 +637,8 @@ if (responseSection) {
 
     loadNotificationHistory();
 
+    loadDeliveryHealth();
+
     loadIncidentReminders();
 
     loadSecurityIncidents();
@@ -690,6 +692,13 @@ function startAutoRefresh() {
         )
     );
 
+
+    refreshIntervals.push(
+        setInterval(
+            loadDeliveryHealth,
+            5000
+        )
+    );
 
     refreshIntervals.push(
         setInterval(
@@ -3276,3 +3285,161 @@ async function loadSecurityResponseAudit() {
 console.log(
     "=== AUTHENTICATED DASHBOARD READY ==="
 );
+
+
+// ============================================================
+// NOTIFICATION DELIVERY HEALTH MONITOR
+// ============================================================
+
+async function loadDeliveryHealth() {
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/delivery-health`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const summary = data.summary || {};
+
+        function updateText(id, value) {
+
+            const element = document.getElementById(id);
+
+            if (element) {
+                element.textContent = value;
+            }
+        }
+
+        updateText(
+            "deliveryOverallHealth",
+            data.overall_health || "UNKNOWN"
+        );
+
+        updateText(
+            "deliveryTotalAttempts",
+            summary.total_attempts ?? 0
+        );
+
+        updateText(
+            "deliverySent",
+            summary.sent ?? 0
+        );
+
+        updateText(
+            "deliveryFailed",
+            summary.failed ?? 0
+        );
+
+        updateText(
+            "deliveryPending",
+            summary.pending ?? 0
+        );
+
+        updateText(
+            "deliveryOverdue",
+            summary.overdue ?? 0
+        );
+
+        updateText(
+            "deliverySuccessRate",
+            summary.success_rate === null
+                ? "N/A"
+                : `${summary.success_rate}%`
+        );
+
+        updateText(
+            "deliveryFailureRate",
+            summary.failure_rate === null
+                ? "N/A"
+                : `${summary.failure_rate}%`
+        );
+
+        // ----------------------------------------------------
+        // CHANNEL HEALTH TABLE
+        // ----------------------------------------------------
+
+        const table = document.getElementById(
+            "deliveryChannelTable"
+        );
+
+        if (table) {
+
+            table.innerHTML = "";
+
+            const channels = data.channels || {};
+
+            Object.entries(channels).forEach(
+                ([name, channel]) => {
+
+                    const row = document.createElement("tr");
+
+                    const values = [
+                        name.toUpperCase(),
+                        channel.health,
+                        channel.total,
+                        channel.sent,
+                        channel.failed,
+                        channel.pending,
+                        channel.total_attempts,
+                        channel.success_rate === null
+                            ? "N/A"
+                            : `${channel.success_rate}%`
+                    ];
+
+                    values.forEach(value => {
+
+                        const cell =
+                            document.createElement("td");
+
+                        cell.textContent =
+                            value === null || value === undefined
+                                ? "-"
+                                : String(value);
+
+                        row.appendChild(cell);
+
+                    });
+
+                    table.appendChild(row);
+
+                }
+            );
+
+        }
+
+        updateText(
+            "deliveryHealthUpdated",
+            `Last updated: ${new Date().toLocaleString()}`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "DELIVERY HEALTH ERROR:",
+            error
+        );
+
+        updateText(
+            "deliveryOverallHealth",
+            "Unavailable"
+        );
+
+        updateText(
+            "deliveryHealthUpdated",
+            "Unable to retrieve delivery health."
+        );
+
+    }
+
+}

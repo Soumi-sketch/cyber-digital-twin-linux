@@ -46,8 +46,11 @@ from fastapi import Depends
 from sqlalchemy import text
 
 from backend.database import engine
-from backend.ai.anomaly_service import analyze_all_metrics
 
+from backend.ai.anomaly_service import analyze_all_metrics
+from backend.notifications.delivery_health_monitor import (
+    get_delivery_health
+)
 from backend.ai.ml_anomaly_detector import (
     train_anomaly_model,
     predict_anomaly
@@ -1251,6 +1254,38 @@ def get_notification_history(
 
         return records
 
+
+# ============================================================
+# NOTIFICATION DELIVERY HEALTH API
+# ============================================================
+
+@app.get("/security/delivery-health")
+def get_notification_delivery_health(
+    current_user=Depends(
+        require_roles(
+            {
+                "admin",
+                "analyst",
+                "viewer"
+            }
+        )
+    )
+):
+
+    try:
+
+        return get_delivery_health()
+
+    except Exception as error:
+
+        get_app_logger().exception(
+            "DELIVERY HEALTH API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve notification delivery health"
+        )
 
 # ============================================================
 # INCIDENT ASSIGNMENT AND ACKNOWLEDGEMENT REMINDER API

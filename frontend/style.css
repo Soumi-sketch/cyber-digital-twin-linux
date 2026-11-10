@@ -491,3 +491,43 @@ body:not(.auth-locked) #loginScreen {
     opacity: 0.6;
     cursor: wait;
 }
+
+
+/* ============================================================
+   NOTIFICATION DELIVERY HEALTH DASHBOARD
+   ============================================================ */
+
+.delivery-health-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(150px, 1fr)
+    );
+    gap: 12px;
+    margin: 18px 0 24px;
+}
+
+.delivery-health-card {
+    padding: 15px;
+    border: 1px solid #cccccc;
+    border-radius: 8px;
+    background: rgba(128, 128, 128, 0.06);
+}
+
+.delivery-health-card h3 {
+    margin: 0 0 10px;
+    font-size: 14px;
+}
+
+.delivery-health-card p {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+#deliveryHealthUpdated {
+    margin-top: 15px;
+    font-size: 12px;
+    opacity: 0.75;
+}
