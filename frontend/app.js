@@ -639,7 +639,11 @@ if (responseSection) {
 
     loadDeliveryHealth();
 
-loadNotificationAnalytics();
+    loadNotificationSettings();
+
+    loadNotificationSettingsAudit();
+
+    loadNotificationAnalytics();
 
 document.getElementById(
     "analyticsRefreshButton"
@@ -3313,6 +3317,394 @@ async function loadSecurityResponseAudit() {
 console.log(
     "=== AUTHENTICATED DASHBOARD READY ==="
 );
+
+
+
+// ============================================================
+// PHASE 21.6 FEATURE 7 - ADMIN NOTIFICATION SETTINGS
+// ============================================================
+
+function setNotificationSettingsMessage(message) {
+
+    const element = document.getElementById(
+        "notificationSettingsMessage"
+    );
+
+    if (element) {
+        element.textContent = message;
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// LOAD AND DISPLAY NOTIFICATION SETTINGS
+// ------------------------------------------------------------
+
+async function loadNotificationSettings() {
+
+    const table = document.getElementById(
+        "notificationSettingsTable"
+    );
+
+    if (!table) {
+        return;
+    }
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/notification-settings`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const settings = await response.json();
+
+        table.textContent = "";
+
+        const isAdmin =
+            currentUserRole === "admin";
+
+        const channels = [
+            {
+                name: "EMAIL",
+                field: "email_enabled"
+            },
+            {
+                name: "TELEGRAM",
+                field: "telegram_enabled"
+            },
+            {
+                name: "DASHBOARD",
+                field: "dashboard_enabled"
+            }
+        ];
+
+        settings.forEach(setting => {
+
+            const row = document.createElement("tr");
+
+            const severityCell = document.createElement("td");
+            severityCell.textContent = setting.severity;
+            row.appendChild(severityCell);
+
+            const priorityCell = document.createElement("td");
+            priorityCell.textContent = setting.priority || "-";
+            row.appendChild(priorityCell);
+
+            channels.forEach(channel => {
+
+                const cell = document.createElement("td");
+
+                const enabled = Boolean(
+                    setting[channel.field]
+                );
+
+                const isCriticalDashboard =
+                    setting.severity === "CRITICAL" &&
+                    channel.name === "DASHBOARD";
+
+                if (isAdmin) {
+
+                    const button =
+                        document.createElement("button");
+
+                    button.type = "button";
+
+                    button.className =
+                        "notification-setting-button";
+
+                    button.textContent = enabled
+                        ? "ENABLED"
+                        : "DISABLED";
+
+                    button.classList.add(
+                        enabled ? "setting-enabled" : "setting-disabled"
+                    );
+
+                    button.disabled = isCriticalDashboard;
+
+                    if (isCriticalDashboard) {
+
+                        button.title =
+                            "Critical dashboard notifications cannot be disabled.";
+
+                    } else {
+
+                        button.addEventListener(
+                            "click",
+                            () => updateNotificationSetting(
+                                setting.severity,
+                                channel.name,
+                                !enabled
+                            )
+                        );
+
+                    }
+
+                    cell.appendChild(button);
+
+                } else {
+
+                    cell.textContent = enabled
+                        ? "ENABLED"
+                        : "DISABLED";
+
+                }
+
+                row.appendChild(cell);
+
+            });
+
+            table.appendChild(row);
+
+        });
+
+        setNotificationSettingsMessage(
+            isAdmin
+                ? "Admin mode: You can update notification policies."
+                : "Read-only mode: Only administrators can change notification policies."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION SETTINGS LOAD ERROR:",
+            error
+        );
+
+        table.textContent = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 5;
+        cell.textContent =
+            "Unable to load notification settings.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+
+        setNotificationSettingsMessage(
+            "Error loading notification settings."
+        );
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// UPDATE A NOTIFICATION POLICY
+// ------------------------------------------------------------
+
+async function updateNotificationSetting(
+    severity,
+    channel,
+    enabled
+) {
+
+    if (currentUserRole !== "admin") {
+
+        setNotificationSettingsMessage(
+            "Permission denied: Admin access required."
+        );
+
+        return;
+
+    }
+
+    if (
+        severity === "CRITICAL" &&
+        channel === "DASHBOARD" &&
+        !enabled
+    ) {
+
+        setNotificationSettingsMessage(
+            "Critical dashboard notifications cannot be disabled."
+        );
+
+        return;
+
+    }
+
+    const action = enabled
+        ? "enable"
+        : "disable";
+
+    const confirmed = window.confirm(
+        `Are you sure you want to ${action} ${channel} notifications for ${severity} incidents?`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+
+        setNotificationSettingsMessage(
+            `Updating ${severity} ${channel} policy...`
+        );
+
+        const response = await apiFetch(
+            `${API}/security/notification-settings/${severity}/${channel}`,
+            {
+                method: "PUT",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    enabled: enabled
+                })
+            }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail || `HTTP ${response.status}`
+            );
+
+        }
+
+        setNotificationSettingsMessage(
+            data.status === "unchanged"
+                ? "The notification policy was already set to that value."
+                : `${severity} ${channel} notifications successfully ${action}d.`
+        );
+
+        await loadNotificationSettings();
+        await loadNotificationSettingsAudit();
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION SETTINGS UPDATE ERROR:",
+            error
+        );
+
+        setNotificationSettingsMessage(
+            `Update failed: ${error.message}`
+        );
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// LOAD NOTIFICATION SETTINGS AUDIT HISTORY
+// ------------------------------------------------------------
+
+async function loadNotificationSettingsAudit() {
+
+    const table = document.getElementById(
+        "notificationSettingsAuditTable"
+    );
+
+    if (!table) {
+        return;
+    }
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/notification-settings/audit?limit=100`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const records = await response.json();
+
+        table.textContent = "";
+
+        if (!records.length) {
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 7;
+            cell.textContent = "No settings changes recorded.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+            return;
+
+        }
+
+        records.forEach(record => {
+
+            const row = document.createElement("tr");
+
+            const values = [
+                record.id,
+                record.severity,
+                record.channel,
+                record.old_enabled ? "ENABLED" : "DISABLED",
+                record.new_enabled ? "ENABLED" : "DISABLED",
+                record.changed_by_username,
+                record.changed_at
+                    ? new Date(record.changed_at).toLocaleString()
+                    : "-"
+            ];
+
+            values.forEach(value => {
+
+                const cell = document.createElement("td");
+
+                cell.textContent =
+                    value === null || value === undefined
+                        ? "-"
+                        : String(value);
+
+                row.appendChild(cell);
+
+            });
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "NOTIFICATION SETTINGS AUDIT ERROR:",
+            error
+        );
+
+        table.textContent = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 7;
+        cell.textContent =
+            "Unable to load notification settings audit history.";
+
+        row.appendChild(cell);
+        table.appendChild(row);
+
+    }
+
+}
 
 
 // ============================================================

@@ -1,46 +1,35 @@
-
 # ============================================================
-# SEVERITY-BASED NOTIFICATION POLICY ENGINE
+# DATABASE-BACKED NOTIFICATION POLICY ENGINE
+# PHASE 21.6 - ADMIN NOTIFICATION SETTINGS
 # ============================================================
 
-# This module decides which notification channels
-# are permitted for each incident severity.
+from sqlalchemy import text
 
-# It does NOT send notifications.
+from backend.database import engine
 
 
-NOTIFICATION_POLICIES = {
+# ------------------------------------------------------------
+# SAFE DEFAULT PRIORITIES
+# ------------------------------------------------------------
 
-    "LOW": {
-        "email": False,
-        "telegram": False,
-        "dashboard": True,
-        "priority": "P4"
-    },
-
-    "MEDIUM": {
-        "email": False,
-        "telegram": False,
-        "dashboard": True,
-        "priority": "P3"
-    },
-
-    "HIGH": {
-        "email": True,
-        "telegram": False,
-        "dashboard": True,
-        "priority": "P2"
-    },
-
-    "CRITICAL": {
-        "email": True,
-        "telegram": True,
-        "dashboard": True,
-        "priority": "P1"
-    }
-
+SEVERITY_PRIORITIES = {
+    "LOW": "P4",
+    "MEDIUM": "P3",
+    "HIGH": "P2",
+    "CRITICAL": "P1"
 }
 
+
+VALID_CHANNELS = {
+    "email",
+    "telegram",
+    "dashboard"
+}
+
+
+# ------------------------------------------------------------
+# GET CURRENT POLICY FROM POSTGRESQL
+# ------------------------------------------------------------
 
 def get_notification_policy(severity):
 
@@ -48,22 +37,74 @@ def get_notification_policy(severity):
         severity
     ).strip().upper()
 
-    policy = NOTIFICATION_POLICIES.get(
-        normalized_severity
-    )
-
-    if policy is None:
+    if normalized_severity not in SEVERITY_PRIORITIES:
 
         raise ValueError(
             f"Unsupported incident severity: "
             f"{normalized_severity}"
         )
 
-    return {
-        "severity": normalized_severity,
-        **policy
+    # Safe fallback:
+    # External delivery is blocked if settings cannot be read.
+    safe_policy = {
+        "email": False,
+        "telegram": False,
+        "dashboard": True,
+        "priority": SEVERITY_PRIORITIES[
+            normalized_severity
+        ]
     }
 
+    try:
+
+        with engine.connect() as connection:
+
+            result = connection.execute(
+                text("""
+                    SELECT
+                        email_enabled,
+                        telegram_enabled,
+                        dashboard_enabled
+                    FROM notification_settings
+                    WHERE severity = :severity
+                """),
+                {
+                    "severity": normalized_severity
+                }
+            )
+
+            row = result.mappings().first()
+
+            if row is None:
+
+                return {
+                    "severity": normalized_severity,
+                    **safe_policy
+                }
+
+            return {
+                "severity": normalized_severity,
+                "email": bool(row["email_enabled"]),
+                "telegram": bool(row["telegram_enabled"]),
+                "dashboard": bool(row["dashboard_enabled"]),
+                "priority": SEVERITY_PRIORITIES[
+                    normalized_severity
+                ]
+            }
+
+    except Exception:
+
+        # Fail closed for external delivery.
+        # Preserve dashboard visibility.
+        return {
+            "severity": normalized_severity,
+            **safe_policy
+        }
+
+
+# ------------------------------------------------------------
+# CHECK CHANNEL PERMISSION
+# ------------------------------------------------------------
 
 def should_send_notification(
     severity,
@@ -78,11 +119,7 @@ def should_send_notification(
         channel
     ).strip().lower()
 
-    if normalized_channel not in (
-        "email",
-        "telegram",
-        "dashboard"
-    ):
+    if normalized_channel not in VALID_CHANNELS:
 
         raise ValueError(
             f"Unsupported notification channel: "

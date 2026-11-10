@@ -55,6 +55,13 @@ from backend.ai.anomaly_service import analyze_all_metrics
 from backend.notifications.delivery_health_monitor import (
     get_delivery_health
 )
+
+from backend.notifications.notification_settings_manager import (
+    get_notification_settings,
+    update_notification_setting,
+    get_notification_settings_audit
+)
+
 from backend.ai.ml_anomaly_detector import (
     train_anomaly_model,
     predict_anomaly
@@ -125,6 +132,10 @@ class IncidentReopenRequest(BaseModel):
         min_length=5,
         max_length=500
     )
+
+class NotificationSettingUpdateRequest(BaseModel):
+
+    enabled: bool
 
 # ============================================================
 # CENTRALIZED LOGGING
@@ -1193,6 +1204,112 @@ def security_response_audit(
         })
 
         return result.mappings().all()
+
+# ============================================================
+# ADMIN NOTIFICATION SETTINGS API
+# ============================================================
+
+@app.get("/security/notification-settings")
+def notification_settings_api(
+    current_user=Depends(
+        require_roles(
+            {"admin", "analyst", "viewer"}
+        )
+    )
+):
+
+    try:
+
+        return get_notification_settings()
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION SETTINGS API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve notification settings"
+        )
+
+
+@app.put("/security/notification-settings/{severity}/{channel}")
+def update_notification_settings_api(
+    severity: str,
+    channel: str,
+    request: NotificationSettingUpdateRequest,
+    current_user=Depends(
+        require_roles({"admin"})
+    )
+):
+
+    try:
+
+        return update_notification_setting(
+            severity=severity,
+            channel=channel,
+            enabled=request.enabled,
+            changed_by_user_id=current_user.get("user_id"),
+            changed_by_username=current_user.get("sub")
+        )
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(error)
+        )
+
+    except RuntimeError as error:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(error)
+        )
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION SETTINGS UPDATE ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to update notification settings"
+        )
+
+
+@app.get("/security/notification-settings/audit")
+def notification_settings_audit_api(
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=500
+    ),
+    current_user=Depends(
+        require_roles(
+            {"admin", "analyst", "viewer"}
+        )
+    )
+):
+
+    try:
+
+        return get_notification_settings_audit(
+            limit=limit
+        )
+
+    except Exception:
+
+        get_app_logger().exception(
+            "NOTIFICATION SETTINGS AUDIT API ERROR"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve notification settings audit"
+        )
 
 # ============================================================
 # INCIDENT NOTIFICATION HISTORY API

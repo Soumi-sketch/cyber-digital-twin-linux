@@ -531,3 +531,54 @@ body:not(.auth-locked) #loginScreen {
     font-size: 12px;
     opacity: 0.75;
 }
+
+
+/* ============================================================
+   PHASE 21.6 FEATURE 7 - NOTIFICATION SETTINGS
+   ============================================================ */
+
+#notificationSettingsSection {
+    margin-top: 20px;
+}
+
+#notificationSettingsMessage {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 12px 0;
+}
+
+#notificationSettingsSection table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0 25px;
+}
+
+#notificationSettingsSection th,
+#notificationSettingsSection td {
+    padding: 11px;
+    text-align: left;
+    border-bottom: 1px solid #dddddd;
+}
+
+.notification-setting-button {
+    min-width: 95px;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 5px;
+    font-weight: 700;
+    cursor: pointer;
+    color: white;
+}
+
+.notification-setting-button.setting-enabled {
+    background-color: #16803c;
+}
+
+.notification-setting-button.setting-disabled {
+    background-color: #b42318;
+}
+
+.notification-setting-button:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+}
