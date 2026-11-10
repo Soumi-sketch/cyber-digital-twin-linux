@@ -16,6 +16,10 @@ from backend.security.alert_engine import (
     process_new_ssh_events
 )
 
+from backend.security.incident_escalation_manager import (
+    process_incident_escalations
+)
+
 
 # ------------------------------------------------
 # CONFIGURE LOGGING
@@ -155,6 +159,33 @@ while True:
                     )
 
             clients[host_name] = None
+
+    # ----------------------------------------
+    # PROCESS UNRESOLVED INCIDENT ESCALATIONS
+    # ----------------------------------------
+
+    try:
+
+        escalation_results = process_incident_escalations()
+
+        if escalation_results:
+
+            logger.info(
+                "Incident escalation checks completed | Results: %d",
+                len(escalation_results)
+            )
+
+            for result in escalation_results:
+                logger.info(
+                    "Escalation result: %s",
+                    result
+                )
+
+    except Exception:
+
+        logger.exception(
+            "Incident escalation processing failed"
+        )
 
     logger.info(
         "Waiting 5 seconds for next collection..."
