@@ -24,6 +24,11 @@ from backend.security.incident_reminder_manager import (
     process_incident_reminders
 )
 
+from backend.security.file_integrity import (
+    get_fim_baselines,
+    scan_integrity
+)
+
 # ------------------------------------------------
 # CONFIGURE LOGGING
 # ------------------------------------------------
@@ -46,6 +51,9 @@ clients = {}
 # ------------------------------------------------
 # CONTINUOUS COLLECTION LOOP
 # ------------------------------------------------
+
+last_fim_scan = 0
+
 
 while True:
 
@@ -217,6 +225,46 @@ while True:
         logger.exception(
             "Incident reminder processing failed"
         )
+
+    # ----------------------------------------
+    # AUTOMATED FIM SCAN - EVERY 60 SECONDS
+    # ----------------------------------------
+
+    if time.monotonic() - last_fim_scan >= 60:
+        last_fim_scan = time.monotonic()
+
+        try:
+            baselines = get_fim_baselines()
+            monitored_hosts = sorted({
+                item["hostname"] for item in baselines
+            })
+
+            for hostname in monitored_hosts:
+                try:
+                    result = scan_integrity(hostname)
+                    logger.info(
+                        "Scheduled FIM scan: %s | Checked: %d | Changes: %d",
+                        hostname,
+                        result["files_checked"],
+                        result["changes_detected"]
+                    )
+
+                    for event in result["events"]:
+                        logger.warning(
+                            "FIM ALERT: %s | %s | %s",
+                            hostname,
+                            event["event"],
+                            event["file"]
+                        )
+
+                except Exception:
+                    logger.exception(
+                        "Scheduled FIM scan failed for %s",
+                        hostname
+                    )
+
+        except Exception:
+            logger.exception("Scheduled FIM baseline lookup failed")
 
     logger.info(
         "Waiting 5 seconds for next collection..."

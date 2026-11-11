@@ -4968,3 +4968,178 @@ async function loadPredictiveAnalytics() {
     }
 
 }
+
+
+// ============================================================
+// PHASE 24 - FILE INTEGRITY MONITORING
+// ============================================================
+
+async function loadFIMDashboard() {
+    const status = document.getElementById("fimStatus");
+
+    try {
+        const [baselineResponse, eventResponse] = await Promise.all([
+            apiFetch(`${API}/security/fim/baselines`),
+            apiFetch(`${API}/security/fim/events?limit=100`)
+        ]);
+
+        if (!baselineResponse.ok || !eventResponse.ok) {
+            throw new Error(
+                `Baseline HTTP ${baselineResponse.status}; Events HTTP ${eventResponse.status}`
+            );
+        }
+
+        const [baselines, events] = await Promise.all([
+            baselineResponse.json(),
+            eventResponse.json()
+        ]);
+
+        const baselineTable = document.getElementById("fimBaselineTable");
+        const eventTable = document.getElementById("fimEventsTable");
+
+        baselineTable.replaceChildren();
+        eventTable.replaceChildren();
+
+        if (!baselines.length) {
+            baselineTable.innerHTML =
+                '<tr><td colspan="5">No baselines found.</td></tr>';
+        } else {
+            baselines.forEach(item => {
+                const row = document.createElement("tr");
+
+                [
+                    item.hostname,
+                    item.file_path,
+                    item.sha256,
+                    item.updated_by,
+                    item.updated_at
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = String(value ?? "-");
+                    row.appendChild(cell);
+                });
+
+                baselineTable.appendChild(row);
+            });
+        }
+
+        if (!events.length) {
+            eventTable.innerHTML =
+                '<tr><td colspan="5">No integrity changes detected.</td></tr>';
+        } else {
+            events.forEach(item => {
+                const row = document.createElement("tr");
+
+                [
+                    item.hostname,
+                    item.file_path,
+                    item.event_type,
+                    item.severity,
+                    item.detected_at
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = String(value ?? "-");
+                    row.appendChild(cell);
+                });
+
+                eventTable.appendChild(row);
+            });
+        }
+
+        if (status) {
+            status.textContent =
+                `FIM loaded: ${baselines.length} baselines, ${events.length} events.`;
+        }
+
+    } catch (error) {
+        console.error("FIM DASHBOARD ERROR:", error);
+
+        if (status) {
+            status.textContent = `Unable to load FIM records: ${error.message}`;
+        }
+    }
+}
+
+
+async function createFIMBaseline() {
+    const status = document.getElementById("fimStatus");
+
+    if (currentUserRole !== "admin") {
+        status.textContent = "Only administrators can create or update baselines.";
+        return;
+    }
+
+    if (!confirm("Create/update the FIM baseline for prac-server?")) {
+        return;
+    }
+
+    try {
+        status.textContent = "Creating FIM baseline...";
+
+        const response = await apiFetch(
+            `${API}/security/fim/baseline/prac-server`,
+            { method: "POST" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        status.textContent =
+            `Baseline saved: ${data.baseline_files_saved} files; skipped: ${data.skipped_files.length}.`;
+
+        await loadFIMDashboard();
+
+    } catch (error) {
+        status.textContent = `Baseline creation failed: ${error.message}`;
+    }
+}
+
+
+async function runFIMScan() {
+    const status = document.getElementById("fimStatus");
+
+    if (!["admin", "analyst"].includes(currentUserRole)) {
+        status.textContent = "Your role cannot run integrity scans.";
+        return;
+    }
+
+    try {
+        status.textContent = "Scanning protected files...";
+
+        const response = await apiFetch(
+            `${API}/security/fim/scan/prac-server`,
+            { method: "POST" }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        await loadFIMDashboard();
+
+        status.textContent =
+            `Scan complete: ${data.files_checked} checked; ${data.changes_detected} changes detected. Baseline unchanged: ${!data.baseline_automatically_changed}.`;
+
+    } catch (error) {
+        status.textContent = `Integrity scan failed: ${error.message}`;
+    }
+}
+
+
+
+// PHASE 24 - FIM SECURE EVENT LISTENERS
+// No inline event handlers; compatible with strict CSP.
+
+document.getElementById("fimBaselineBtn")
+    ?.addEventListener("click", createFIMBaseline);
+
+document.getElementById("fimScanBtn")
+    ?.addEventListener("click", runFIMScan);
+
+document.getElementById("fimRefreshBtn")
+    ?.addEventListener("click", loadFIMDashboard);

@@ -2230,3 +2230,66 @@ def predictive_alerts_api(
             status_code=500,
             detail="Unable to generate predictive security alerts"
         )
+
+
+# ============================================================
+# PHASE 24 - FILE INTEGRITY MONITORING
+# ============================================================
+
+from backend.security.file_integrity import (
+    ensure_fim_tables,
+    create_baseline,
+    scan_integrity,
+    get_fim_events,
+    get_fim_baselines
+)
+
+
+@app.post("/security/fim/baseline/{hostname}")
+def fim_create_baseline(
+    hostname: str,
+    current_user=Depends(require_roles(["admin"]))
+):
+    try:
+        ensure_fim_tables()
+        return create_baseline(
+            hostname,
+            username=current_user.get("username", "admin")
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/security/fim/scan/{hostname}")
+def fim_scan(
+    hostname: str,
+    current_user=Depends(
+        require_roles(["admin", "analyst"])
+    )
+):
+    try:
+        ensure_fim_tables()
+        return scan_integrity(hostname)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/security/fim/events")
+def fim_events(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_fim_tables()
+    return get_fim_events(limit)
+
+
+@app.get("/security/fim/baselines")
+def fim_baselines(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_fim_tables()
+    return get_fim_baselines()

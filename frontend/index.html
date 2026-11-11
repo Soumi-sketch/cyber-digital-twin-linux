@@ -1334,7 +1334,62 @@
          JAVASCRIPT
     ====================================================== -->
 
-    <script src="app.js?v=2"></script>
+
+<!-- PHASE 24: FILE INTEGRITY MONITORING -->
+<section class="card" id="fimSection">
+    <h2>File Integrity Monitoring</h2>
+    <p id="fimStatus">Ready. Select an action to begin.</p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:15px 0;">
+        <button id="fimBaselineBtn" type="button">
+            Create Baseline (Admin)
+        </button>
+        <button id="fimScanBtn" type="button">
+            Run Integrity Scan
+        </button>
+        <button id="fimRefreshBtn" type="button">
+            Refresh Records
+        </button>
+    </div>
+
+    <h3>Protected File Baselines</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>File Path</th>
+                    <th>SHA-256</th>
+                    <th>Updated By</th>
+                    <th>Updated At</th>
+                </tr>
+            </thead>
+            <tbody id="fimBaselineTable">
+                <tr><td colspan="5">Click Refresh Records.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Integrity Events</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hostname</th>
+                    <th>File Path</th>
+                    <th>Event</th>
+                    <th>Severity</th>
+                    <th>Detected At</th>
+                </tr>
+            </thead>
+            <tbody id="fimEventsTable">
+                <tr><td colspan="5">Click Refresh Records.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script src="app.js?v=24"></script>
 
 </body>
 
