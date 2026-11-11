@@ -2293,3 +2293,55 @@ def fim_baselines(
 ):
     ensure_fim_tables()
     return get_fim_baselines()
+
+
+# ============================================================
+# PHASE 25 - PROCESS AND SERVICE SECURITY MONITORING
+# ============================================================
+
+from backend.security.process_service_monitor import (
+    ensure_phase25_tables,
+    get_process_detections,
+    get_service_changes,
+    get_process_service_alerts,
+    get_process_service_summary
+)
+
+
+@app.get("/security/process-services/summary")
+def process_service_summary(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return get_process_service_summary()
+
+
+@app.get("/security/process-services/detections")
+def process_service_detections(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return get_process_detections(limit)
+
+
+@app.get("/security/process-services/service-changes")
+def process_service_changes(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return get_service_changes(limit)
+
+
+@app.get("/security/process-services/alerts")
+def process_service_alerts(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return get_process_service_alerts(limit)

@@ -30,6 +30,11 @@ from backend.security.file_integrity import (
 )
 
 # ------------------------------------------------
+from backend.security.process_service_monitor import (
+    ensure_phase25_tables,
+    monitor_host_process_services
+)
+
 # CONFIGURE LOGGING
 # ------------------------------------------------
 
@@ -53,6 +58,7 @@ clients = {}
 # ------------------------------------------------
 
 last_fim_scan = 0
+last_process_service_scan = 0
 
 
 while True:
@@ -269,5 +275,38 @@ while True:
     logger.info(
         "Waiting 5 seconds for next collection..."
     )
+
+
+    # ----------------------------------------
+    # PHASE 25 - PROCESS/SERVICE SCAN EVERY 60 SECONDS
+    # ----------------------------------------
+
+    if time.monotonic() - last_process_service_scan >= 60:
+        last_process_service_scan = time.monotonic()
+
+        try:
+            ensure_phase25_tables()
+
+            for host_name, client in list(clients.items()):
+                if client is None:
+                    continue
+
+                try:
+                    result = monitor_host_process_services(host_name, client)
+                    logger.info(
+                        "Phase 25 scan: %s | Processes: %d | Services: %d | Detections: %d",
+                        host_name,
+                        result["processes_collected"],
+                        result["services_collected"],
+                        result["detections"]
+                    )
+                except Exception:
+                    logger.exception(
+                        "Phase 25 monitoring failed for %s",
+                        host_name
+                    )
+
+        except Exception:
+            logger.exception("Phase 25 monitoring initialization failed")
 
     time.sleep(5)

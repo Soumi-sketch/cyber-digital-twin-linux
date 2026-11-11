@@ -1,3 +1,16 @@
+// Safe HTML escaping for dashboard values.
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (char) {
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[char];
+    });
+}
+
 // ============================================================
 // AUTHENTICATION
 // ============================================================
@@ -723,6 +736,15 @@ refreshIntervals.push(
 
     loadSecurityResponseAudit();
 
+    // Phase 25: Process and Service Security Dashboard
+    loadProcessServiceDashboard();
+
+    refreshIntervals.push(
+        setInterval(
+            loadProcessServiceDashboard,
+            30000
+        )
+    );
 
     startAutoRefresh();
 
@@ -5143,3 +5165,87 @@ document.getElementById("fimScanBtn")
 
 document.getElementById("fimRefreshBtn")
     ?.addEventListener("click", loadFIMDashboard);
+
+
+// ============================================================
+// PHASE 25 - PROCESS AND SERVICE SECURITY DASHBOARD
+// ============================================================
+
+async function loadProcessServiceDashboard() {
+    const status = document.getElementById("processServiceStatus");
+    if (!status) return;
+
+    try {
+        const responses = await Promise.all([
+            apiFetch(`${API}/security/process-services/summary`),
+            apiFetch(`${API}/security/process-services/detections?limit=50`),
+            apiFetch(`${API}/security/process-services/service-changes?limit=50`),
+            apiFetch(`${API}/security/process-services/alerts?limit=50`)
+        ]);
+
+        const [summary, detections, changes, alerts] = await Promise.all(
+            responses.map(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+        );
+
+        document.getElementById("psProcessCount").textContent =
+            summary.process_inventory_records ?? 0;
+        document.getElementById("psServiceCount").textContent =
+            summary.service_inventory_records ?? 0;
+        document.getElementById("psDetectionCount").textContent =
+            summary.open_process_detections ?? 0;
+        document.getElementById("psAlertCount").textContent =
+            summary.alerts_last_24_hours ?? 0;
+
+        const detectionsBody = document.getElementById("psDetectionsTable");
+        detectionsBody.innerHTML = detections.length
+            ? detections.map(item => `<tr>
+                <td>${escapeHtml(String(item.hostname ?? ""))}</td>
+                <td>${escapeHtml(String(item.process_name ?? ""))}</td>
+                <td>${escapeHtml(String(item.pid ?? ""))}</td>
+                <td>${escapeHtml(String(item.username ?? ""))}</td>
+                <td>${escapeHtml(String(item.severity ?? ""))}</td>
+                <td>${escapeHtml(String(item.risk_score ?? ""))}</td>
+                <td>${escapeHtml(String(item.occurrences ?? ""))}</td>
+                <td>${escapeHtml(String(item.last_seen ?? ""))}</td>
+            </tr>`).join("")
+            : '<tr><td colspan="8">No suspicious processes detected.</td></tr>';
+
+        const changesBody = document.getElementById("psServiceChangesTable");
+        changesBody.innerHTML = changes.length
+            ? changes.map(item => `<tr>
+                <td>${escapeHtml(String(item.hostname ?? ""))}</td>
+                <td>${escapeHtml(String(item.unit_name ?? ""))}</td>
+                <td>${escapeHtml(String(item.previous_state ?? ""))}</td>
+                <td>${escapeHtml(String(item.current_state ?? ""))}</td>
+                <td>${escapeHtml(String(item.change_type ?? ""))}</td>
+                <td>${escapeHtml(String(item.captured_at ?? ""))}</td>
+            </tr>`).join("")
+            : '<tr><td colspan="6">No service state changes recorded.</td></tr>';
+
+        const alertsBody = document.getElementById("psAlertsTable");
+        alertsBody.innerHTML = alerts.length
+            ? alerts.map(item => `<tr>
+                <td>${escapeHtml(String(item.hostname ?? ""))}</td>
+                <td>${escapeHtml(String(item.alert_type ?? ""))}</td>
+                <td>${escapeHtml(String(item.severity ?? ""))}</td>
+                <td>${escapeHtml(String(item.risk_score ?? ""))}</td>
+                <td>${escapeHtml(String(item.title ?? ""))}</td>
+                <td>${escapeHtml(String(item.details ?? ""))}</td>
+            </tr>`).join("")
+            : '<tr><td colspan="6">No alerts recorded.</td></tr>';
+
+        status.textContent = "Process/service monitoring data loaded.";
+    } catch (error) {
+        console.error("Phase 25 dashboard error:", error);
+        status.textContent = `Unable to load Phase 25 data: ${error.message}`;
+    }
+}
+
+document.getElementById("psRefreshBtn")
+    ?.addEventListener("click", loadProcessServiceDashboard);
+
