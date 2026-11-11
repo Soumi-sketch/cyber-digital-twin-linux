@@ -2088,3 +2088,145 @@ def sync_threat_feed(
         )
 
     return result
+
+# ============================================================
+# PHASE 23 - HISTORICAL SECURITY ANALYTICS
+# ============================================================
+
+from backend.analytics.security_history import get_security_history
+
+
+@app.get("/security/analytics/history")
+def security_history_api(
+    days: int = Query(30, ge=1, le=90),
+    period: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
+    current_user=Depends(get_current_user)
+):
+    try:
+        return get_security_history(
+            days=days,
+            period=period
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("Historical security analytics failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve historical security analytics"
+        )
+
+# ============================================================
+# PHASE 23 - SSH ATTACK TREND ANALYSIS
+# ============================================================
+
+from backend.analytics.security_history import get_ssh_attack_trends
+
+
+@app.get("/security/analytics/attack-trends")
+def ssh_attack_trends_api(
+    days: int = Query(30, ge=1, le=90),
+    current_user=Depends(get_current_user)
+):
+    try:
+        return get_ssh_attack_trends(days=days)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("SSH attack trend analysis failed")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve SSH attack trends"
+        )
+
+# ============================================================
+# PHASE 23 - PREDICTIVE SECURITY RISK
+# ============================================================
+
+from backend.analytics.predictive_risk import predict_security_risk
+
+
+@app.get("/security/analytics/predictive-risk")
+def predictive_security_risk_api(
+    days: int = Query(30, ge=1, le=90),
+    current_user=Depends(get_current_user)
+):
+    try:
+        return predict_security_risk(days=days)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc)
+        )
+
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("Predictive security risk failed")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to calculate predictive security risk"
+        )
+
+from backend.analytics.anomaly_forecast import forecast_metric_anomalies
+
+
+@app.get("/security/analytics/anomaly-forecast")
+def anomaly_forecast_api(current_user=Depends(get_current_user)):
+    try:
+        return forecast_metric_anomalies()
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("Anomaly trend forecasting failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to forecast infrastructure anomalies"
+        )
+
+from backend.analytics.attack_pattern_predictor import predict_attack_patterns
+
+
+@app.get("/security/analytics/attack-patterns")
+def attack_pattern_prediction_api(
+    days: int = Query(30, ge=1, le=90),
+    current_user=Depends(get_current_user)
+):
+    try:
+        return predict_attack_patterns(days=days)
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("Attack pattern prediction failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to predict SSH attack patterns"
+        )
+
+from backend.analytics.predictive_alerts import generate_predictive_alerts
+
+
+@app.get("/security/analytics/predictive-alerts")
+def predictive_alerts_api(
+    days: int = Query(30, ge=1, le=90),
+    current_user=Depends(get_current_user)
+):
+    try:
+        return generate_predictive_alerts(days=days)
+    except Exception:
+        app_logger = get_app_logger()
+        app_logger.exception("Predictive alert generation failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to generate predictive security alerts"
+        )

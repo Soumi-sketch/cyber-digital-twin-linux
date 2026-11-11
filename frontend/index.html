@@ -1237,7 +1237,100 @@
 
     </section>
 
-    <!-- =====================================================
+
+<!-- =====================================================
+     PHASE 23: PREDICTIVE SECURITY ANALYTICS
+====================================================== -->
+
+<section class="card" id="predictiveAnalyticsSection">
+
+    <h2>Predictive Security Analytics</h2>
+
+    <p id="predictiveAnalyticsStatus">
+        Loading predictive security analytics...
+    </p>
+
+    <!-- Predictive Risk -->
+    <h3>Predictive Security Risk</h3>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Risk Score</th>
+                    <th>Risk Level</th>
+                    <th>Predicted Failed Logins</th>
+                    <th>Predicted Invalid Users</th>
+                </tr>
+            </thead>
+            <tbody id="predictiveRiskTable">
+                <tr>
+                    <td colspan="4">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Anomaly Forecast -->
+    <h3>Infrastructure Anomaly Forecast</h3>
+
+    <div class="chart-container">
+        <canvas id="predictiveAnomalyChart"></canvas>
+    </div>
+
+    <!-- Attack Patterns -->
+    <h3>Predicted Attack Patterns</h3>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Source IP</th>
+                    <th>Attack Classification</th>
+                    <th>Failed Logins</th>
+                    <th>Invalid Users</th>
+                    <th>Recurrence</th>
+                </tr>
+            </thead>
+            <tbody id="predictiveAttackTable">
+                <tr>
+                    <td colspan="5">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Predictive Alerts -->
+    <h3>Predictive Security Alerts</h3>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Alert Type</th>
+                    <th>Severity</th>
+                    <th>Source IP</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="predictiveAlertsTable">
+                <tr>
+                    <td colspan="4">Loading...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>
+        <strong>Note:</strong>
+        Predictions are based on historical trends and heuristic
+        analysis. They do not guarantee future attacks.
+    </p>
+
+</section>
+
+
+   <!-- =====================================================
          JAVASCRIPT
     ====================================================== -->
 

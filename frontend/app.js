@@ -710,6 +710,17 @@ if (
 }
     loadSecurityDecisions();
 
+// Phase 23: Predictive Security Analytics
+
+loadPredictiveAnalytics();
+
+refreshIntervals.push(
+    setInterval(
+        loadPredictiveAnalytics,
+        30000
+    )
+);
+
     loadSecurityResponseAudit();
 
 
@@ -4665,6 +4676,293 @@ async function loadThreatIntelligence() {
         if (status) {
             status.textContent =
                 "Unable to load threat intelligence data.";
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// PHASE 23: PREDICTIVE SECURITY ANALYTICS
+// ============================================================
+
+let predictiveAnomalyChart = null;
+
+async function loadPredictiveAnalytics() {
+
+    const status = document.getElementById(
+        "predictiveAnalyticsStatus"
+    );
+
+    try {
+
+        const endpoints = [
+            "/security/analytics/predictive-risk?days=30",
+            "/security/analytics/anomaly-forecast",
+            "/security/analytics/attack-patterns?days=30",
+            "/security/analytics/predictive-alerts?days=30"
+        ];
+
+        const responses = await Promise.all(
+            endpoints.map(async endpoint => {
+
+                const response = await apiFetch(
+                    `${API}${endpoint}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(
+                        `API request failed: ${endpoint} (${response.status})`
+                    );
+                }
+
+                return response.json();
+
+            })
+        );
+
+        const [
+            riskData,
+            anomalyData,
+            attackData,
+            alertData
+        ] = responses;
+
+        // ----------------------------------------------------
+        // 1. PREDICTIVE SECURITY RISK
+        // ----------------------------------------------------
+
+        const riskTable = document.getElementById(
+            "predictiveRiskTable"
+        );
+
+        if (riskTable) {
+
+            riskTable.textContent = "";
+
+            const risk = riskData.predictive_risk || {};
+            const prediction = riskData.prediction || {};
+
+            const row = document.createElement("tr");
+
+            [
+                risk.score ?? "-",
+                risk.level ?? "-",
+                prediction.predicted_failed_logins ?? "-",
+                prediction.predicted_invalid_users ?? "-"
+            ].forEach(value => {
+
+                const cell = document.createElement("td");
+                cell.textContent = String(value);
+                row.appendChild(cell);
+
+            });
+
+            riskTable.appendChild(row);
+
+        }
+
+        // ----------------------------------------------------
+        // 2. INFRASTRUCTURE ANOMALY FORECAST
+        // ----------------------------------------------------
+
+        const metrics = anomalyData.metrics || {};
+
+        const metricNames = ["cpu", "memory", "disk"];
+
+        const metricLabels = [
+            "CPU",
+            "Memory",
+            "Disk"
+        ];
+
+        const forecastValues = metricNames.map(metric => {
+
+            const value = metrics[metric]
+                ?.predicted_next_observation_average;
+
+            return Number.isFinite(Number(value))
+                ? Number(value)
+                : null;
+
+        });
+
+        const canvas = document.getElementById(
+            "predictiveAnomalyChart"
+        );
+
+        if (canvas && typeof Chart !== "undefined") {
+
+            if (predictiveAnomalyChart) {
+                predictiveAnomalyChart.destroy();
+            }
+
+            predictiveAnomalyChart = new Chart(
+                canvas,
+                {
+                    type: "bar",
+
+                    data: {
+                        labels: metricLabels,
+
+                        datasets: [{
+                            label: "Predicted next observation (%)",
+                            data: forecastValues,
+                            backgroundColor: [
+                                "#3498db",
+                                "#9b59b6",
+                                "#2ecc71"
+                            ]
+                        }]
+                    },
+
+                    options: {
+                        responsive: true,
+
+                        maintainAspectRatio: false,
+
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: "Predicted usage (%)"
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+        }
+
+        // ----------------------------------------------------
+        // 3. PREDICTED ATTACK PATTERNS
+        // ----------------------------------------------------
+
+        const attackTable = document.getElementById(
+            "predictiveAttackTable"
+        );
+
+        if (attackTable) {
+
+            attackTable.textContent = "";
+
+            const patterns =
+                attackData.predicted_attack_patterns || [];
+
+            if (patterns.length === 0) {
+
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+
+                cell.colSpan = 5;
+                cell.textContent = "No suspicious attack patterns found.";
+
+                row.appendChild(cell);
+                attackTable.appendChild(row);
+
+            } else {
+
+                patterns.forEach(pattern => {
+
+                    const row = document.createElement("tr");
+
+                    [
+                        pattern.source_ip,
+                        pattern.dominant_pattern,
+                        pattern.failed_logins,
+                        pattern.invalid_users,
+                        pattern.recurrence_estimate
+                    ].forEach(value => {
+
+                        const cell = document.createElement("td");
+                        cell.textContent = String(value ?? "-");
+                        row.appendChild(cell);
+
+                    });
+
+                    attackTable.appendChild(row);
+
+                });
+
+            }
+
+        }
+
+        // ----------------------------------------------------
+        // 4. PREDICTIVE SECURITY ALERTS
+        // ----------------------------------------------------
+
+        const alertTable = document.getElementById(
+            "predictiveAlertsTable"
+        );
+
+        if (alertTable) {
+
+            alertTable.textContent = "";
+
+            const alerts =
+                alertData.predictive_alerts || [];
+
+            if (alerts.length === 0) {
+
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+
+                cell.colSpan = 4;
+                cell.textContent = "No predictive alerts generated.";
+
+                row.appendChild(cell);
+                alertTable.appendChild(row);
+
+            } else {
+
+                alerts.forEach(alert => {
+
+                    const row = document.createElement("tr");
+
+                    [
+                        alert.alert_type,
+                        alert.severity,
+                        alert.source_ip || alert.metric || "-",
+                        alert.message
+                    ].forEach(value => {
+
+                        const cell = document.createElement("td");
+                        cell.textContent = String(value ?? "-");
+                        row.appendChild(cell);
+
+                    });
+
+                    alertTable.appendChild(row);
+
+                });
+
+            }
+
+        }
+
+        if (status) {
+
+            status.textContent =
+                `Predictive analytics updated successfully. ` +
+                `${alertData.total_predictive_alerts ?? 0} predictive alerts found.`;
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "PREDICTIVE ANALYTICS ERROR:",
+            error
+        );
+
+        if (status) {
+            status.textContent =
+                "Unable to load all predictive analytics. Check API availability.";
         }
 
     }
