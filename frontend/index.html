@@ -84,6 +84,74 @@
     <h1>AI Powered Cyber Digital Twin</h1>
 
 
+
+    <!-- =====================================================
+         PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
+    ====================================================== -->
+
+    <section id="fleetOverviewSection">
+
+        <div class="fleet-heading">
+            <div>
+                <h2>Multi-Server Fleet Overview</h2>
+                <p>Centralized health and resource monitoring</p>
+            </div>
+
+            <button id="fleetRefreshButton" type="button">
+                Refresh Fleet
+            </button>
+        </div>
+
+        <div id="fleetSummary" class="fleet-summary-grid">
+            <div class="fleet-summary-card">
+                <span>Total Servers</span>
+                <strong id="fleetTotal">--</strong>
+            </div>
+            <div class="fleet-summary-card">
+                <span>Online</span>
+                <strong id="fleetOnline">--</strong>
+            </div>
+            <div class="fleet-summary-card">
+                <span>Healthy</span>
+                <strong id="fleetHealthy">--</strong>
+            </div>
+            <div class="fleet-summary-card">
+                <span>Warning</span>
+                <strong id="fleetWarning">--</strong>
+            </div>
+            <div class="fleet-summary-card">
+                <span>Critical</span>
+                <strong id="fleetCritical">--</strong>
+            </div>
+        </div>
+
+        <div class="fleet-controls">
+            <input
+                type="search"
+                id="fleetSearch"
+                placeholder="Search hostname or IP address..."
+                aria-label="Search fleet hosts"
+            >
+
+            <select id="fleetStatusFilter" aria-label="Filter by host status">
+                <option value="ALL">All statuses</option>
+                <option value="Healthy">Healthy</option>
+                <option value="Warning">Warning</option>
+                <option value="Critical">Critical</option>
+                <option value="Stale">Stale</option>
+                <option value="No Data">No Data</option>
+                <option value="Disabled">Disabled</option>
+            </select>
+        </div>
+
+        <div id="fleetHostGrid" class="fleet-host-grid">
+            <p>Loading fleet information...</p>
+        </div>
+
+        <p id="fleetLastUpdated">Last updated: waiting for data</p>
+
+    </section>
+
     <!-- =====================================================
          CURRENT SYSTEM STATUS
     ====================================================== -->

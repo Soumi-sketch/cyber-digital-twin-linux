@@ -2750,3 +2750,91 @@ def update_inventory_host_status(
         "message": "Host status updated",
         "host": dict(result)
     }
+
+
+# ============================================================
+# PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
+# ============================================================
+
+@app.get("/fleet/overview")
+def get_fleet_overview(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            WITH latest_metrics AS (
+                SELECT DISTINCT ON (hostname)
+                    hostname,
+                    ip_address,
+                    cpu_usage,
+                    memory_usage,
+                    disk_usage,
+                    collected_at
+                FROM system_metrics
+                ORDER BY hostname, collected_at DESC
+            )
+            SELECT
+                h.hostname,
+                h.ip_address,
+                h.enabled,
+                h.description,
+                h.registered_at,
+                lm.cpu_usage,
+                lm.memory_usage,
+                lm.disk_usage,
+                lm.collected_at AS last_seen,
+                CASE
+                    WHEN h.enabled = FALSE THEN 'Disabled'
+                    WHEN lm.collected_at IS NULL THEN 'No Data'
+                    WHEN lm.collected_at < NOW() - INTERVAL '30 seconds'
+                        THEN 'Stale'
+                    WHEN lm.cpu_usage > 90
+                      OR lm.memory_usage > 90
+                      OR lm.disk_usage > 90
+                        THEN 'Critical'
+                    WHEN lm.cpu_usage > 70
+                      OR lm.memory_usage > 70
+                      OR lm.disk_usage > 70
+                        THEN 'Warning'
+                    ELSE 'Healthy'
+                END AS status
+            FROM monitored_hosts h
+            LEFT JOIN latest_metrics lm
+                ON lm.hostname = h.hostname
+            ORDER BY h.hostname;
+        """)).mappings().all()
+
+    hosts = [dict(row) for row in rows]
+
+    summary = {
+        "total": len(hosts),
+        "online": sum(
+            host["status"] in ("Healthy", "Warning", "Critical")
+            for host in hosts
+        ),
+        "healthy": sum(
+            host["status"] == "Healthy" for host in hosts
+        ),
+        "warning": sum(
+            host["status"] == "Warning" for host in hosts
+        ),
+        "critical": sum(
+            host["status"] == "Critical" for host in hosts
+        ),
+        "stale": sum(
+            host["status"] == "Stale" for host in hosts
+        ),
+        "no_data": sum(
+            host["status"] == "No Data" for host in hosts
+        ),
+        "disabled": sum(
+            host["status"] == "Disabled" for host in hosts
+        )
+    }
+
+    return {
+        "summary": summary,
+        "hosts": hosts
+    }

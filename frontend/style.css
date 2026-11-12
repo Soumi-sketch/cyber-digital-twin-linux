@@ -582,3 +582,234 @@ body:not(.auth-locked) #loginScreen {
     opacity: 0.75;
     cursor: not-allowed;
 }
+
+
+/* ============================================================
+   PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
+   ============================================================ */
+
+#fleetOverviewSection {
+    margin: 25px 0;
+}
+
+.fleet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.fleet-heading h2 {
+    margin-bottom: 5px;
+    color: #0077cc;
+}
+
+.fleet-heading p {
+    margin-top: 0;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+#fleetRefreshButton {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #0077cc;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#fleetRefreshButton:hover {
+    background: #005fa3;
+}
+
+.fleet-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.fleet-summary-card {
+    background: white;
+    padding: 17px;
+    border-radius: 9px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.fleet-summary-card span {
+    display: block;
+    color: #555;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.fleet-summary-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 27px;
+    color: #0077cc;
+}
+
+.fleet-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.fleet-controls input,
+.fleet-controls select {
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: white;
+    font-size: 14px;
+}
+
+.fleet-controls input {
+    flex: 1;
+    min-width: 220px;
+}
+
+.fleet-host-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.fleet-host-card {
+    min-width: 0;
+    padding: 19px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
+    border-left: 5px solid #777;
+}
+
+.fleet-host-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.fleet-host-title h3 {
+    margin: 0 0 6px;
+    overflow-wrap: anywhere;
+    color: #0077cc;
+}
+
+.fleet-host-title p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: normal;
+    color: #555;
+}
+
+.fleet-status {
+    padding: 6px 10px;
+    border-radius: 20px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.fleet-status.healthy {
+    background: #16803c;
+}
+
+.fleet-status.warning {
+    background: #b7791f;
+}
+
+.fleet-status.critical {
+    background: #b42318;
+}
+
+.fleet-status.stale,
+.fleet-status.no-data,
+.fleet-status.disabled,
+.fleet-status.unknown {
+    background: #666;
+}
+
+.fleet-host-card:has(.fleet-status.healthy) {
+    border-left-color: #16803c;
+}
+
+.fleet-host-card:has(.fleet-status.warning) {
+    border-left-color: #b7791f;
+}
+
+.fleet-host-card:has(.fleet-status.critical) {
+    border-left-color: #b42318;
+}
+
+.fleet-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.fleet-metrics div {
+    padding: 11px;
+    background: #f4f7fa;
+    border-radius: 7px;
+}
+
+.fleet-metrics span {
+    display: block;
+    color: #555;
+    font-size: 12px;
+}
+
+.fleet-metrics strong {
+    display: block;
+    margin-top: 6px;
+    font-size: 18px;
+    overflow-wrap: anywhere;
+}
+
+.fleet-host-footer {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    color: #666;
+    font-size: 12px;
+}
+
+#fleetLastUpdated {
+    margin-top: 14px;
+    color: #666;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.fleet-empty,
+.fleet-error {
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.fleet-error {
+    color: #b42318;
+}
+
+@media (max-width: 850px) {
+    .fleet-summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fleet-host-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -616,6 +616,31 @@ if (responseSection) {
 
     loadDashboard();
 
+    // Phase 27.2 - Fleet overview refresh
+    loadFleetOverview();
+
+    refreshIntervals.push(
+        setInterval(
+            loadFleetOverview,
+            10000
+        )
+    );
+
+    document.getElementById("fleetRefreshButton")?.addEventListener(
+        "click",
+        loadFleetOverview
+    );
+
+    document.getElementById("fleetSearch")?.addEventListener(
+        "input",
+        loadFleetOverview
+    );
+
+    document.getElementById("fleetStatusFilter")?.addEventListener(
+        "change",
+        loadFleetOverview
+    );
+
     refreshIntervals.push(
         setInterval(
             loadDashboard,
@@ -991,6 +1016,166 @@ let notificationChannelChart;
 let notificationSeverityChart;
 let incidentDeliveryChart;
 let incidentRetryChart;
+
+
+// ============================================================
+// PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
+// ============================================================
+
+async function loadFleetOverview() {
+
+    const hostGrid = document.getElementById("fleetHostGrid");
+
+    if (!hostGrid) {
+        return;
+    }
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/fleet/overview`,
+            {
+                method: "GET",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const summary = data.summary || {};
+
+        document.getElementById("fleetTotal").innerText =
+            summary.total ?? 0;
+
+        document.getElementById("fleetOnline").innerText =
+            summary.online ?? 0;
+
+        document.getElementById("fleetHealthy").innerText =
+            summary.healthy ?? 0;
+
+        document.getElementById("fleetWarning").innerText =
+            summary.warning ?? 0;
+
+        document.getElementById("fleetCritical").innerText =
+            summary.critical ?? 0;
+
+        const hosts = Array.isArray(data.hosts) ? data.hosts : [];
+
+        function renderFleetHosts() {
+
+            const searchValue =
+                (document.getElementById("fleetSearch")?.value || "")
+                    .trim()
+                    .toLowerCase();
+
+            const statusValue =
+                document.getElementById("fleetStatusFilter")?.value || "ALL";
+
+            const filteredHosts = hosts.filter(host => {
+
+                const hostname = String(host.hostname || "").toLowerCase();
+                const ipAddress = String(host.ip_address || "").toLowerCase();
+
+                const matchesSearch =
+                    hostname.includes(searchValue) ||
+                    ipAddress.includes(searchValue);
+
+                const matchesStatus =
+                    statusValue === "ALL" || host.status === statusValue;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            if (filteredHosts.length === 0) {
+                hostGrid.innerHTML =
+                    '<p class="fleet-empty">No servers match your filters.</p>';
+                return;
+            }
+
+            hostGrid.innerHTML = filteredHosts.map(host => {
+
+                const status = String(host.status || "Unknown");
+
+                const statusClasses = {
+                    "Healthy": "healthy",
+                    "Warning": "warning",
+                    "Critical": "critical",
+                    "Stale": "stale",
+                    "No Data": "no-data",
+                    "Disabled": "disabled"
+                };
+
+                const statusClass =
+                    statusClasses[status] || "unknown";
+
+                const metricValue = value =>
+                    value === null || value === undefined
+                        ? "N/A"
+                        : `${escapeHtml(value)}%`;
+
+                const lastSeen = host.last_seen
+                    ? new Date(host.last_seen).toLocaleString()
+                    : "Never";
+
+                return `
+                    <article class="fleet-host-card">
+                        <div class="fleet-host-title">
+                            <div>
+                                <h3>${escapeHtml(host.hostname || "Unknown host")}</h3>
+                                <p>${escapeHtml(host.ip_address || "No IP address")}</p>
+                            </div>
+
+                            <span class="fleet-status ${statusClass}">
+                                ${escapeHtml(status)}
+                            </span>
+                        </div>
+
+                        <div class="fleet-metrics">
+                            <div>
+                                <span>CPU Usage</span>
+                                <strong>${metricValue(host.cpu_usage)}</strong>
+                            </div>
+
+                            <div>
+                                <span>Memory Usage</span>
+                                <strong>${metricValue(host.memory_usage)}</strong>
+                            </div>
+
+                            <div>
+                                <span>Disk Usage</span>
+                                <strong>${metricValue(host.disk_usage)}</strong>
+                            </div>
+                        </div>
+
+                        <div class="fleet-host-footer">
+                            <span>Last seen: ${escapeHtml(lastSeen)}</span>
+                        </div>
+                    </article>
+                `;
+
+            }).join("");
+        }
+
+        renderFleetHosts();
+
+        const updated = new Date().toLocaleString();
+
+        document.getElementById("fleetLastUpdated").innerText =
+            `Last updated: ${updated}`;
+
+    } catch (error) {
+
+        console.error("Fleet overview error:", error);
+
+        hostGrid.innerHTML =
+            '<p class="fleet-error">Unable to load fleet information. Check API connectivity and login status.</p>';
+
+    }
+}
+
 
 // ============================================================
 // LOAD INFRASTRUCTURE HEALTH
