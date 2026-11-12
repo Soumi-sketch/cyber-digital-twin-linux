@@ -4,6 +4,10 @@ from backend.security.incident_engine import (
     correlate_incidents
 )
 
+from backend.security.cross_server_correlation import (
+    detect_cross_server_campaigns
+)
+
 from backend.security.incident_manager import (
     get_incident_status,
     get_incident_history,
@@ -752,6 +756,16 @@ def get_security_campaigns(
     )
 
     return campaigns
+
+# ============================================================
+# PHASE 27.6 - CROSS-SERVER ATTACK CAMPAIGNS
+# ============================================================
+
+@app.get("/security/cross-server-campaigns")
+def get_cross_server_campaigns(
+    current_user=Depends(get_current_user)
+):
+    return detect_cross_server_campaigns()
 
 # ============================================================
 # SECURITY INCIDENT API

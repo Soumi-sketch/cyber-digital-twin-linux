@@ -771,6 +771,8 @@ document.getElementById(
 
     loadSecurityCampaigns();
 
+    loadCrossServerCampaigns();
+
     loadSecurityResponses();
 
 if (
@@ -792,6 +794,13 @@ refreshIntervals.push(
         30000
     )
 );
+
+    refreshIntervals.push(
+        setInterval(
+            loadCrossServerCampaigns,
+            5000
+        )
+    );
 
     loadSecurityResponseAudit();
 
@@ -3351,6 +3360,123 @@ async function loadSecurityCampaigns() {
                 </tr>
             `;
 
+        }
+
+    }
+
+}
+
+
+// ============================================================
+// PHASE 27.6 - CROSS-SERVER ATTACK CAMPAIGNS
+// ============================================================
+
+async function loadCrossServerCampaigns() {
+
+    try {
+
+        const response = await apiFetch(
+            `${API}/security/cross-server-campaigns`,
+            {
+                method: "GET",
+                mode: "cors",
+                cache: "no-store"
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                `Cross-server campaigns HTTP ${response.status}`
+            );
+        }
+
+        const campaigns = await response.json();
+
+        const table = document.getElementById(
+            "crossServerCampaignsTable"
+        );
+
+        if (!table) {
+            return;
+        }
+
+        table.innerHTML = "";
+
+        if (!Array.isArray(campaigns) || campaigns.length === 0) {
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        No cross-server attack campaigns detected
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        campaigns.forEach(campaign => {
+
+            const row = document.createElement("tr");
+
+            const affectedHosts = Array.isArray(campaign.target_hosts)
+                ? campaign.target_hosts.join(", ")
+                : "-";
+
+            const formatTime = value => {
+                if (!value) return "-";
+
+                const date = new Date(value);
+
+                return Number.isNaN(date.getTime())
+                    ? "-"
+                    : date.toLocaleString();
+            };
+
+            const cells = [
+                campaign.campaign_id || "-",
+                campaign.source_ip || "-",
+                affectedHosts,
+                campaign.target_count ?? 0,
+                campaign.severity || "UNKNOWN",
+                campaign.total_attempts ?? 0,
+                campaign.failed_logins ?? 0,
+                campaign.invalid_users ?? 0,
+                formatTime(campaign.start_time),
+                formatTime(campaign.end_time)
+            ];
+
+            cells.forEach(value => {
+
+                const cell = document.createElement("td");
+
+                cell.textContent = String(value);
+
+                row.appendChild(cell);
+
+            });
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "CROSS-SERVER CAMPAIGN ERROR:",
+            error
+        );
+
+        const table = document.getElementById(
+            "crossServerCampaignsTable"
+        );
+
+        if (table) {
+            table.innerHTML = `
+                <tr>
+                    <td colspan="10">
+                        Unable to load cross-server attack campaigns
+                    </td>
+                </tr>
+            `;
         }
 
     }

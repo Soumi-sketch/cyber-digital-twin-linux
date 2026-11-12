@@ -1171,6 +1171,55 @@
     </section>
 
 
+
+    <!-- =====================================================
+         PHASE 27.6 - CROSS-SERVER ATTACK CAMPAIGNS
+    ====================================================== -->
+
+    <section class="card">
+
+        <h2>Cross-Server Attack Campaigns</h2>
+
+        <p>
+            Detects coordinated SSH attacks from the same
+            source IP against multiple monitored Linux servers
+            within a 30-minute window.
+        </p>
+
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Campaign ID</th>
+                        <th>Source IP</th>
+                        <th>Affected Servers</th>
+                        <th>Server Count</th>
+                        <th>Severity</th>
+                        <th>Total Attempts</th>
+                        <th>Failed Logins</th>
+                        <th>Invalid Users</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                    </tr>
+                </thead>
+
+                <tbody id="crossServerCampaignsTable">
+                    <tr>
+                        <td colspan="10">
+                            Loading cross-server attack campaigns...
+                        </td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
     <!-- =====================================================
          SECURITY INCIDENTS
     ====================================================== -->
