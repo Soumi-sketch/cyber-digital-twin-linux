@@ -2413,3 +2413,340 @@ def network_security_alerts(
 ):
     ensure_phase26_tables()
     return get_network_alerts(limit)
+
+
+# ============================================================
+# PHASE 27.1 - CENTRALIZED HOST INVENTORY API
+# ============================================================
+
+import ipaddress
+
+
+class HostInventoryCreate(BaseModel):
+    hostname: str = Field(min_length=1, max_length=100)
+    ip_address: str = Field(min_length=1, max_length=50)
+    username: str = Field(min_length=1, max_length=100)
+    auth_method: str = Field(default="password")
+    key_file: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class HostInventoryUpdate(BaseModel):
+    ip_address: str | None = Field(default=None, max_length=50)
+    username: str | None = Field(default=None, max_length=100)
+    auth_method: str | None = None
+    key_file: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class HostInventoryStatusUpdate(BaseModel):
+    enabled: bool
+
+
+def validate_inventory_ip(ip_address):
+    try:
+        ipaddress.ip_address(ip_address)
+    except ValueError:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid IP address"
+        )
+
+
+@app.get("/inventory/hosts")
+def list_inventory_hosts(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT
+                id,
+                hostname,
+                ip_address,
+                username,
+                auth_method,
+                enabled,
+                description,
+                registration_source,
+                registered_at,
+                updated_at,
+                last_seen
+            FROM monitored_hosts
+            ORDER BY hostname;
+        """)).mappings().all()
+
+    return {
+        "total": len(rows),
+        "hosts": [dict(row) for row in rows]
+    }
+
+
+@app.get("/inventory/hosts/{hostname}")
+def get_inventory_host(
+    hostname: str,
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    with engine.connect() as connection:
+        row = connection.execute(text("""
+            SELECT *
+            FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {
+            "hostname": hostname
+        }).mappings().first()
+
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail="Host not found"
+        )
+
+    host = dict(row)
+    host.pop("key_file", None)
+    return host
+
+
+@app.post("/inventory/hosts", status_code=201)
+def register_inventory_host(
+    request: HostInventoryCreate,
+    current_user=Depends(
+        require_roles(["admin"])
+    )
+):
+    hostname = request.hostname.strip()
+    username = request.username.strip()
+    ip_address = request.ip_address.strip()
+    auth_method = request.auth_method.strip().lower()
+
+    if not hostname or not username:
+        raise HTTPException(
+            status_code=422,
+            detail="Hostname and username cannot be empty"
+        )
+
+    if auth_method not in ("password", "key"):
+        raise HTTPException(
+            status_code=422,
+            detail="auth_method must be password or key"
+        )
+
+    if auth_method == "key" and not request.key_file:
+        raise HTTPException(
+            status_code=422,
+            detail="key_file is required for key authentication"
+        )
+
+    validate_inventory_ip(ip_address)
+
+    with engine.begin() as connection:
+        existing = connection.execute(text("""
+            SELECT id
+            FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {
+            "hostname": hostname
+        }).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="Hostname is already registered"
+            )
+
+        result = connection.execute(text("""
+            INSERT INTO monitored_hosts (
+                hostname,
+                ip_address,
+                username,
+                auth_method,
+                key_file,
+                description,
+                registration_source
+            )
+            VALUES (
+                :hostname,
+                :ip_address,
+                :username,
+                :auth_method,
+                :key_file,
+                :description,
+                'manual'
+            )
+            RETURNING
+                id,
+                hostname,
+                ip_address,
+                username,
+                auth_method,
+                key_file,
+                enabled,
+                description,
+                registration_source,
+                registered_at;
+        """), {
+            "hostname": hostname,
+            "ip_address": ip_address,
+            "username": username,
+            "auth_method": auth_method,
+            "key_file": request.key_file,
+            "description": request.description
+        }).mappings().first()
+
+    host = dict(result)
+    host.pop("key_file", None)
+
+    return {
+        "message": "Host registered successfully",
+        "host": host
+    }
+
+
+@app.patch("/inventory/hosts/{hostname}")
+def update_inventory_host(
+    hostname: str,
+    request: HostInventoryUpdate,
+    current_user=Depends(
+        require_roles(["admin"])
+    )
+):
+    updates = request.model_dump(exclude_unset=True)
+
+    if not updates:
+        raise HTTPException(
+            status_code=400,
+            detail="No update fields provided"
+        )
+
+    with engine.begin() as connection:
+        existing = connection.execute(text("""
+            SELECT *
+            FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {
+            "hostname": hostname
+        }).mappings().first()
+
+        if not existing:
+            raise HTTPException(
+                status_code=404,
+                detail="Host not found"
+            )
+
+        new_ip = updates.get(
+            "ip_address",
+            existing["ip_address"]
+        )
+
+        new_username = updates.get(
+            "username",
+            existing["username"]
+        )
+
+        new_auth = updates.get(
+            "auth_method",
+            existing["auth_method"]
+        )
+
+        new_key_file = updates.get(
+            "key_file",
+            existing["key_file"]
+        )
+
+        if new_ip is not None:
+            validate_inventory_ip(new_ip)
+
+        if new_username is not None and not new_username.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Username cannot be empty"
+            )
+
+        if new_auth is not None:
+            new_auth = new_auth.strip().lower()
+
+        if new_auth not in ("password", "key"):
+            raise HTTPException(
+                status_code=422,
+                detail="auth_method must be password or key"
+            )
+
+        if new_auth == "key" and not new_key_file:
+            raise HTTPException(
+                status_code=422,
+                detail="key_file is required for key authentication"
+            )
+
+        allowed_fields = {
+            "ip_address",
+            "username",
+            "auth_method",
+            "key_file",
+            "description"
+        }
+
+        assignments = ", ".join(
+            f"{field} = :{field}"
+            for field in updates
+            if field in allowed_fields
+        )
+
+        updates["hostname"] = hostname
+
+        connection.execute(text(f"""
+            UPDATE monitored_hosts
+            SET {assignments},
+                updated_at = CURRENT_TIMESTAMP
+            WHERE hostname = :hostname;
+        """), updates)
+
+        updated = connection.execute(text("""
+            SELECT *
+            FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {
+            "hostname": hostname
+        }).mappings().first()
+
+    host = dict(updated)
+    host.pop("key_file", None)
+
+    return {
+        "message": "Host inventory updated",
+        "host": host
+    }
+
+
+@app.patch("/inventory/hosts/{hostname}/status")
+def update_inventory_host_status(
+    hostname: str,
+    request: HostInventoryStatusUpdate,
+    current_user=Depends(
+        require_roles(["admin"])
+    )
+):
+    with engine.begin() as connection:
+        result = connection.execute(text("""
+            UPDATE monitored_hosts
+            SET enabled = :enabled,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE hostname = :hostname
+            RETURNING hostname, ip_address, enabled, updated_at;
+        """), {
+            "hostname": hostname,
+            "enabled": request.enabled
+        }).mappings().first()
+
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Host not found"
+            )
+
+    return {
+        "message": "Host status updated",
+        "host": dict(result)
+    }
