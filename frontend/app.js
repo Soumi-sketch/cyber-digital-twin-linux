@@ -1181,6 +1181,88 @@ function renderFleetResourceComparison(hosts) {
 // PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
 // ============================================================
 
+async function loadFleetSecurityRisk() {
+    const rows = document.getElementById("fleetRiskHostRows");
+    if (!rows) return;
+
+    try {
+        const response = await apiFetch(`${API}/fleet/security-risk`, {
+            method: "GET",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const fleet = data.fleet || {};
+        const distribution = fleet.risk_distribution || {};
+
+        const score = Number(fleet.fleet_risk_score ?? 0);
+        const level = String(fleet.fleet_risk_level || "UNKNOWN").toUpperCase();
+
+        document.getElementById("fleetRiskScore").textContent =
+            Number.isFinite(score) ? score.toFixed(2) : "--";
+
+        const levelElement = document.getElementById("fleetRiskLevel");
+        levelElement.textContent = level;
+        levelElement.className = `risk-level-${level.toLowerCase()}`;
+
+        document.getElementById("fleetRiskIncidents").textContent =
+            fleet.recent_incidents ?? 0;
+
+        document.getElementById("fleetRiskCampaigns").textContent =
+            fleet.active_cross_server_campaigns ?? 0;
+
+        document.getElementById("fleetRiskDistribution").innerHTML =
+            ["LOW", "MEDIUM", "HIGH", "CRITICAL"].map(name => `
+                <div class="fleet-risk-distribution-item risk-border-${name.toLowerCase()}">
+                    <span>${name}</span>
+                    <strong>${Number(distribution[name] || 0)}</strong>
+                </div>
+            `).join("");
+
+        const hosts = Array.isArray(data.hosts) ? data.hosts : [];
+
+        if (!hosts.length) {
+            rows.innerHTML = '<tr><td colspan="7">No monitored hosts available.</td></tr>';
+        } else {
+            rows.innerHTML = hosts
+                .sort((a, b) => Number(b.risk_score || 0) - Number(a.risk_score || 0))
+                .map(host => {
+                    const activity = host.security_activity || {};
+                    const risk = String(host.risk_level || "UNKNOWN").toUpperCase();
+                    const riskScore = Number(host.risk_score || 0);
+
+                    return `
+                        <tr>
+                            <td>${escapeHtml(host.hostname || "Unknown")}</td>
+                            <td>${escapeHtml(host.classification || "Unclassified")}</td>
+                            <td>${Number.isFinite(riskScore) ? riskScore.toFixed(2) : "--"}</td>
+                            <td><span class="risk-level-${risk.toLowerCase()}">${escapeHtml(risk)}</span></td>
+                            <td>${Number(activity.attacks_24h || 0)}</td>
+                            <td>${Number(activity.recent_incidents || 0)}</td>
+                            <td>${Number(activity.active_campaigns || 0)}</td>
+                        </tr>
+                    `;
+                }).join("");
+        }
+
+        const updated = data.generated_at
+            ? new Date(data.generated_at).toLocaleString()
+            : new Date().toLocaleString();
+
+        document.getElementById("fleetRiskUpdated").textContent =
+            `Updated: ${updated}`;
+
+    } catch (error) {
+        console.error("Fleet security risk error:", error);
+        rows.innerHTML =
+            '<tr><td colspan="7">Unable to load fleet security risk. Check API and login status.</td></tr>';
+    }
+}
+
 async function loadFleetOverview() {
 
     const hostGrid = document.getElementById("fleetHostGrid");
@@ -1204,6 +1286,7 @@ async function loadFleetOverview() {
         }
 
         const data = await response.json();
+        loadFleetSecurityRisk();
         const summary = data.summary || {};
 
         document.getElementById("fleetTotal").innerText =

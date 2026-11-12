@@ -125,6 +125,58 @@
             </div>
         </div>
 
+        <!-- PHASE 27.7 - FLEET SECURITY RISK DASHBOARD -->
+        <section id="fleetSecurityRiskSection" class="fleet-risk-section">
+            <div class="fleet-risk-heading">
+                <div>
+                    <h3>Fleet-Wide Security Risk</h3>
+                    <p>Aggregated attack, incident and campaign risk across monitored servers.</p>
+                </div>
+                <span id="fleetRiskUpdated">Waiting for data...</span>
+            </div>
+
+            <div class="fleet-risk-summary">
+                <div class="fleet-risk-card">
+                    <span>Fleet Risk Score</span>
+                    <strong id="fleetRiskScore">--</strong>
+                </div>
+                <div class="fleet-risk-card">
+                    <span>Risk Level</span>
+                    <strong id="fleetRiskLevel">--</strong>
+                </div>
+                <div class="fleet-risk-card">
+                    <span>Recent Incidents</span>
+                    <strong id="fleetRiskIncidents">--</strong>
+                </div>
+                <div class="fleet-risk-card">
+                    <span>Active Campaigns</span>
+                    <strong id="fleetRiskCampaigns">--</strong>
+                </div>
+            </div>
+
+            <div id="fleetRiskDistribution" class="fleet-risk-distribution"></div>
+
+            <h4>Per-Server Security Risk</h4>
+            <div class="fleet-risk-table-wrapper">
+                <table class="fleet-risk-table">
+                    <thead>
+                        <tr>
+                            <th>Server</th>
+                            <th>Classification</th>
+                            <th>Risk Score</th>
+                            <th>Risk Level</th>
+                            <th>Attacks (24h)</th>
+                            <th>Incidents</th>
+                            <th>Campaigns</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fleetRiskHostRows">
+                        <tr><td colspan="7">Loading security risk...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- =====================================================
      PHASE 27.5 - CROSS-SERVER RESOURCE COMPARISON
 ====================================================== -->

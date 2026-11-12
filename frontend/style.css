@@ -973,3 +973,118 @@ body:not(.auth-locked) #loginScreen {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* PHASE 27.7 - FLEET SECURITY RISK DASHBOARD */
+.fleet-risk-section {
+    margin: 22px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.fleet-risk-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.fleet-risk-heading h3 {
+    margin: 0 0 6px;
+    color: #0077cc;
+}
+
+.fleet-risk-heading p {
+    margin: 0;
+    color: #666;
+    font-size: 13px;
+}
+
+#fleetRiskUpdated {
+    color: #666;
+    font-size: 12px;
+}
+
+.fleet-risk-summary,
+.fleet-risk-distribution {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.fleet-risk-card,
+.fleet-risk-distribution-item {
+    padding: 15px;
+    border-radius: 8px;
+    background: #f4f7fa;
+}
+
+.fleet-risk-card span,
+.fleet-risk-distribution-item span {
+    display: block;
+    color: #555;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.fleet-risk-card strong,
+.fleet-risk-distribution-item strong {
+    display: block;
+    margin-top: 7px;
+    font-size: 23px;
+}
+
+.fleet-risk-distribution-item {
+    border-left: 4px solid #888;
+}
+
+.risk-border-low { border-color: #16834a; }
+.risk-border-medium { border-color: #c58b16; }
+.risk-border-high { border-color: #d65b25; }
+.risk-border-critical { border-color: #c62828; }
+
+.risk-level-low { color: #16834a; }
+.risk-level-medium { color: #a87508; }
+.risk-level-high { color: #d65b25; }
+.risk-level-critical { color: #c62828; }
+.risk-level-disabled,
+.risk-level-unknown { color: #777; }
+
+.fleet-risk-section h4 {
+    margin: 22px 0 10px;
+}
+
+.fleet-risk-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.fleet-risk-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+.fleet-risk-table th,
+.fleet-risk-table td {
+    padding: 11px;
+    border-bottom: 1px solid #e5e8eb;
+    text-align: left;
+    font-size: 13px;
+}
+
+.fleet-risk-table th {
+    background: #f4f7fa;
+}
+
+@media (max-width: 700px) {
+    .fleet-risk-summary,
+    .fleet-risk-distribution {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

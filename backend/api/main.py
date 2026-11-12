@@ -45,6 +45,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from backend.security.rate_limiter import limiter
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
+from backend.security.fleet_risk_engine import calculate_fleet_risk
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
 from sqlalchemy import text
@@ -3124,3 +3125,16 @@ def get_fleet_overview(
         "summary": summary,
         "hosts": hosts
     }
+
+
+# ============================================================
+# PHASE 27.7 - FLEET-WIDE SECURITY RISK
+# ============================================================
+
+@app.get("/fleet/security-risk")
+def get_fleet_security_risk(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return calculate_fleet_risk()
