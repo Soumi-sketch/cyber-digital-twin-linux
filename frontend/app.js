@@ -660,6 +660,21 @@ if (responseSection) {
         loadFleetOverview
     );
 
+document.getElementById("fleetGroupFilter")?.addEventListener(
+    "change",
+    loadFleetOverview
+);
+
+document.getElementById("fleetClassificationFilter")?.addEventListener(
+    "change",
+    loadFleetOverview
+);
+
+document.getElementById("fleetTagFilter")?.addEventListener(
+    "change",
+    loadFleetOverview
+);
+
     refreshIntervals.push(
         setInterval(
             loadDashboard,
@@ -1083,6 +1098,48 @@ async function loadFleetOverview() {
 
         const hosts = Array.isArray(data.hosts) ? data.hosts : [];
 
+// Populate unique group options from fleet data.
+const groupFilter = document.getElementById("fleetGroupFilter");
+const selectedGroup = groupFilter?.value || "ALL";
+
+if (groupFilter) {
+    const groups = [...new Set(
+        hosts.map(host => host.group_name).filter(Boolean)
+    )].sort();
+
+    groupFilter.innerHTML =
+        '<option value="ALL">All groups</option>' +
+        groups.map(group =>
+            `<option value="${escapeHtml(group)}">${escapeHtml(group)}</option>`
+        ).join("");
+
+    groupFilter.value = groups.includes(selectedGroup)
+        ? selectedGroup
+        : "ALL";
+}
+
+// Populate unique tag options from fleet data.
+const tagFilter = document.getElementById("fleetTagFilter");
+const selectedTag = tagFilter?.value || "ALL";
+
+if (tagFilter) {
+    const tags = [...new Set(
+        hosts.flatMap(host =>
+            Array.isArray(host.tags) ? host.tags : []
+        )
+    )].sort();
+
+    tagFilter.innerHTML =
+        '<option value="ALL">All tags</option>' +
+        tags.map(tag =>
+            `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`
+        ).join("");
+
+    tagFilter.value = tags.includes(selectedTag)
+        ? selectedTag
+        : "ALL";
+}
+
         function renderFleetHosts() {
 
             const searchValue =
@@ -1090,24 +1147,50 @@ async function loadFleetOverview() {
                     .trim()
                     .toLowerCase();
 
-            const statusValue =
-                document.getElementById("fleetStatusFilter")?.value || "ALL";
+const statusValue =
+    document.getElementById("fleetStatusFilter")?.value || "ALL";
 
-            const filteredHosts = hosts.filter(host => {
+const groupValue =
+    document.getElementById("fleetGroupFilter")?.value || "ALL";
 
-                const hostname = String(host.hostname || "").toLowerCase();
-                const ipAddress = String(host.ip_address || "").toLowerCase();
+const classificationValue =
+    document.getElementById("fleetClassificationFilter")?.value || "ALL";
 
-                const matchesSearch =
-                    hostname.includes(searchValue) ||
-                    ipAddress.includes(searchValue);
+const tagValue =
+    document.getElementById("fleetTagFilter")?.value || "ALL";
 
-                const matchesStatus =
-                    statusValue === "ALL" || host.status === statusValue;
+const filteredHosts = hosts.filter(host => {
 
-                return matchesSearch && matchesStatus;
-            });
+    const hostname = String(host.hostname || "").toLowerCase();
+    const ipAddress = String(host.ip_address || "").toLowerCase();
 
+    const matchesSearch =
+        hostname.includes(searchValue) ||
+        ipAddress.includes(searchValue);
+
+    const matchesStatus =
+        statusValue === "ALL" || host.status === statusValue;
+
+    const matchesGroup =
+        groupValue === "ALL" || host.group_name === groupValue;
+
+    const matchesClassification =
+        classificationValue === "ALL" ||
+        host.classification === classificationValue;
+
+    const hostTags = Array.isArray(host.tags) ? host.tags : [];
+
+    const matchesTag =
+        tagValue === "ALL" || hostTags.includes(tagValue);
+
+    return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesGroup &&
+        matchesClassification &&
+        matchesTag
+    );
+});
             if (filteredHosts.length === 0) {
                 hostGrid.innerHTML =
                     '<p class="fleet-empty">No servers match your filters.</p>';
@@ -1150,6 +1233,16 @@ async function loadFleetOverview() {
                             <span class="fleet-status ${statusClass}">
                                 ${escapeHtml(status)}
                             </span>
+                        </div>
+
+                        <div class="fleet-organization">
+                            <p><strong>Group:</strong> ${escapeHtml(host.group_name || "Unassigned")}</p>
+                            <p><strong>Classification:</strong> ${escapeHtml(host.classification || "Unclassified")}</p>
+                            <p><strong>Tags:</strong> ${escapeHtml(
+                                Array.isArray(host.tags) && host.tags.length
+                                    ? host.tags.join(", ")
+                                    : "No tags"
+                            )}</p>
                         </div>
 
                         <div class="fleet-metrics">

@@ -2420,6 +2420,7 @@ def network_security_alerts(
 # ============================================================
 
 import ipaddress
+import json
 
 
 class HostInventoryCreate(BaseModel):
@@ -2443,6 +2444,22 @@ class HostInventoryStatusUpdate(BaseModel):
     enabled: bool
 
 
+class HostGroupCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class HostGroupUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class HostOrganizationUpdate(BaseModel):
+    group_id: int | None = None
+    classification: str = Field(default="Unclassified", max_length=30)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+
 def validate_inventory_ip(ip_address):
     try:
         ipaddress.ip_address(ip_address)
@@ -2451,6 +2468,124 @@ def validate_inventory_ip(ip_address):
             status_code=422,
             detail="Invalid IP address"
         )
+
+
+
+# ============================================================
+# PHASE 27.4 - HOST GROUP MANAGEMENT
+# ============================================================
+
+@app.post("/inventory/groups", status_code=201)
+def create_host_group(
+    request: HostGroupCreate,
+    current_user=Depends(require_roles(["admin"]))
+):
+    name = request.name.strip()
+
+    if not name:
+        raise HTTPException(status_code=422, detail="Group name cannot be empty")
+
+    try:
+        with engine.begin() as connection:
+            result = connection.execute(text("""
+                INSERT INTO host_groups (name, description)
+                VALUES (:name, :description)
+                RETURNING id, name, description, created_at, updated_at;
+            """), {
+                "name": name,
+                "description": request.description
+            }).mappings().first()
+    except Exception as exc:
+        if "unique" in str(exc).lower():
+            raise HTTPException(status_code=409, detail="Group name already exists")
+        raise
+
+    return {"message": "Host group created", "group": dict(result)}
+
+
+@app.get("/inventory/groups")
+def list_host_groups(
+    current_user=Depends(require_roles(["admin", "analyst", "viewer"]))
+):
+    with engine.connect() as connection:
+        rows = connection.execute(text("""
+            SELECT
+                g.id,
+                g.name,
+                g.description,
+                g.created_at,
+                g.updated_at,
+                COUNT(h.id) AS host_count
+            FROM host_groups g
+            LEFT JOIN monitored_hosts h ON h.group_id = g.id
+            GROUP BY g.id
+            ORDER BY g.name;
+        """)).mappings().all()
+
+    return {"total": len(rows), "groups": [dict(row) for row in rows]}
+
+
+@app.patch("/inventory/groups/{group_id}")
+def update_host_group(
+    group_id: int,
+    request: HostGroupUpdate,
+    current_user=Depends(require_roles(["admin"]))
+):
+    updates = request.model_dump(exclude_unset=True)
+
+    if not updates:
+        raise HTTPException(status_code=400, detail="No update fields provided")
+
+    if "name" in updates:
+        updates["name"] = updates["name"].strip()
+        if not updates["name"]:
+            raise HTTPException(status_code=422, detail="Group name cannot be empty")
+
+    assignments = ", ".join(
+        f"{field} = :{field}" for field in updates
+    )
+
+    updates["group_id"] = group_id
+
+    try:
+        with engine.begin() as connection:
+            result = connection.execute(text(f"""
+                UPDATE host_groups
+                SET {assignments}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :group_id
+                RETURNING id, name, description, created_at, updated_at;
+            """), updates).mappings().first()
+    except Exception as exc:
+        if "unique" in str(exc).lower():
+            raise HTTPException(status_code=409, detail="Group name already exists")
+        raise
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    return {"message": "Host group updated", "group": dict(result)}
+
+
+@app.delete("/inventory/groups/{group_id}")
+def delete_host_group(
+    group_id: int,
+    current_user=Depends(require_roles(["admin"]))
+):
+    with engine.begin() as connection:
+        result = connection.execute(text("""
+            DELETE FROM host_groups
+            WHERE id = :group_id
+            RETURNING id, name;
+        """), {"group_id": group_id}).mappings().first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Group not found")
+
+    return {
+        "message": "Host group deleted; associated hosts remain ungrouped",
+        "group": dict(result)
+    }
+
 
 
 @app.get("/inventory/hosts")
@@ -2462,19 +2597,24 @@ def list_inventory_hosts(
     with engine.connect() as connection:
         rows = connection.execute(text("""
             SELECT
-                id,
-                hostname,
-                ip_address,
-                username,
-                auth_method,
-                enabled,
-                description,
-                registration_source,
-                registered_at,
-                updated_at,
-                last_seen
-            FROM monitored_hosts
-            ORDER BY hostname;
+                h.id,
+                h.hostname,
+                h.ip_address,
+                h.username,
+                h.auth_method,
+                h.enabled,
+                h.description,
+                h.registration_source,
+                h.registered_at,
+                h.updated_at,
+                h.last_seen,
+                h.group_id,
+                g.name AS group_name,
+                h.classification,
+                h.tags
+            FROM monitored_hosts h
+            LEFT JOIN host_groups g ON g.id = h.group_id
+            ORDER BY h.hostname;
         """)).mappings().all()
 
     return {
@@ -2492,9 +2632,12 @@ def get_inventory_host(
 ):
     with engine.connect() as connection:
         row = connection.execute(text("""
-            SELECT *
-            FROM monitored_hosts
-            WHERE hostname = :hostname;
+            SELECT
+                h.*,
+                g.name AS group_name
+            FROM monitored_hosts h
+            LEFT JOIN host_groups g ON g.id = h.group_id
+            WHERE h.hostname = :hostname;
         """), {
             "hostname": hostname
         }).mappings().first()
@@ -2771,6 +2914,78 @@ def update_inventory_host(
     }
 
 
+
+
+@app.patch("/inventory/hosts/{hostname}/organization")
+def update_host_organization(
+    hostname: str,
+    request: HostOrganizationUpdate,
+    current_user=Depends(require_roles(["admin"]))
+):
+    allowed_classifications = {
+        "Production", "Development", "Testing", "Lab", "Unclassified"
+    }
+
+    classification = request.classification.strip()
+
+    if classification not in allowed_classifications:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid classification"
+        )
+
+    normalized_tags = []
+    for tag in request.tags:
+        tag = tag.strip()
+        if not tag or len(tag) > 50:
+            raise HTTPException(
+                status_code=422,
+                detail="Tags must contain 1 to 50 characters"
+            )
+        if tag not in normalized_tags:
+            normalized_tags.append(tag)
+
+    with engine.begin() as connection:
+        host = connection.execute(text("""
+            SELECT id FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {"hostname": hostname}).first()
+
+        if not host:
+            raise HTTPException(status_code=404, detail="Host not found")
+
+        if request.group_id is not None:
+            group = connection.execute(text("""
+                SELECT id FROM host_groups
+                WHERE id = :group_id;
+            """), {"group_id": request.group_id}).first()
+
+            if not group:
+                raise HTTPException(status_code=404, detail="Host group not found")
+
+        result = connection.execute(text("""
+            UPDATE monitored_hosts
+            SET
+                group_id = :group_id,
+                classification = :classification,
+                tags = CAST(:tags AS JSONB),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE hostname = :hostname
+            RETURNING
+                id, hostname, ip_address, group_id,
+                classification, tags;
+        """), {
+            "hostname": hostname,
+            "group_id": request.group_id,
+            "classification": classification,
+            "tags": json.dumps(normalized_tags)
+        }).mappings().first()
+
+    return {
+        "message": "Host organization updated",
+        "host": dict(result)
+    }
+
 @app.patch("/inventory/hosts/{hostname}/status")
 def update_inventory_host_status(
     hostname: str,
@@ -2832,6 +3047,10 @@ def get_fleet_overview(
                 h.enabled,
                 h.description,
                 h.registered_at,
+                h.group_id,
+                g.name AS group_name,
+                h.classification,
+                h.tags,
                 lm.cpu_usage,
                 lm.memory_usage,
                 lm.disk_usage,
@@ -2854,6 +3073,8 @@ def get_fleet_overview(
             FROM monitored_hosts h
             LEFT JOIN latest_metrics lm
                 ON lm.hostname = h.hostname
+            LEFT JOIN host_groups g
+                ON g.id = h.group_id
             ORDER BY h.hostname;
         """)).mappings().all()
 
