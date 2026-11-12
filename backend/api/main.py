@@ -96,6 +96,15 @@ from backend.auth.dependencies import (
 )
 
 from pydantic import BaseModel, Field
+from typing import Any, Dict
+
+from backend.simulation.attack_simulator import (
+    get_scenarios,
+    run_simulation,
+    get_simulation_history,
+    get_simulation_detail,
+)
+
 
 app = FastAPI(
     title="AI Powered Cyber Digital Twin",
@@ -155,6 +164,12 @@ class NotificationSimulationRequest(BaseModel):
         min_length=3,
         max_length=20
     )
+
+class AttackSimulationRequest(BaseModel):
+    scenario_type: str = Field(..., min_length=3, max_length=40)
+    target_hostname: str | None = Field(default=None, max_length=253)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
 
 # ============================================================
 # CENTRALIZED LOGGING
@@ -3153,3 +3168,54 @@ def get_fleet_security_alerts(
     )
 ):
     return calculate_fleet_alerts(limit)
+
+
+# ============================================================
+# PHASE 28 - WHAT-IF ATTACK SIMULATION
+# ============================================================
+
+@app.get("/simulation/scenarios")
+def attack_simulation_scenarios(
+    current_user=Depends(require_roles({"admin", "analyst", "viewer"}))
+):
+    return {"scenarios": get_scenarios(), "mode": "DRY-RUN"}
+
+
+@app.post("/simulation/run")
+def execute_attack_simulation(
+    request: AttackSimulationRequest,
+    current_user=Depends(require_roles({"admin", "analyst"}))
+):
+    try:
+        return run_simulation(
+            scenario_type=request.scenario_type,
+            target_hostname=request.target_hostname,
+            parameters=request.parameters,
+            user_id=current_user.get("user_id"),
+            username=current_user.get("sub", "unknown"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+@app.get("/simulation/history")
+def attack_simulation_history(
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user=Depends(require_roles({"admin", "analyst", "viewer"}))
+):
+    simulations = get_simulation_history(limit)
+    return {
+        "simulations": simulations,
+        "count": len(simulations),
+    }
+
+
+@app.get("/simulation/history/{simulation_id}")
+def attack_simulation_detail(
+    simulation_id: int,
+    current_user=Depends(require_roles({"admin", "analyst", "viewer"}))
+):
+    result = get_simulation_detail(simulation_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    return result

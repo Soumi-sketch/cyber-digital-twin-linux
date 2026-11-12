@@ -1147,3 +1147,124 @@ body:not(.auth-locked) #loginScreen {
 .fleet-alert-section td {
     overflow-wrap: anywhere;
 }
+
+/* PHASE 28 - WHAT-IF ATTACK SIMULATION */
+
+.simulation-section {
+    margin-top: 22px;
+}
+
+.simulation-heading,
+.simulation-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.simulation-form-grid,
+.simulation-score-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.simulation-form-grid label,
+.simulation-section > label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 7px;
+}
+
+.simulation-form-grid input,
+.simulation-form-grid select,
+.simulation-section textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px;
+    border: 1px solid var(--border-color, #777);
+    border-radius: 6px;
+}
+
+.simulation-section textarea {
+    font-family: monospace;
+    resize: vertical;
+}
+
+.simulation-mode-note {
+    margin: 15px 0;
+    padding: 12px;
+    border: 1px solid var(--border-color, #777);
+    border-radius: 7px;
+    font-weight: 600;
+}
+
+.simulation-actions {
+    justify-content: flex-start;
+    margin-top: 12px;
+}
+
+.simulation-score-grid > div {
+    padding: 15px;
+    border: 1px solid var(--border-color, #777);
+    border-radius: 8px;
+}
+
+.simulation-score-grid span,
+.simulation-score-grid strong {
+    display: block;
+}
+
+.simulation-score-grid strong {
+    font-size: 1.5rem;
+    margin-top: 8px;
+}
+
+.simulation-result {
+    margin-top: 22px;
+    padding: 16px;
+    border: 1px solid var(--border-color, #777);
+    border-radius: 8px;
+}
+
+.simulation-result pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.simulation-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.simulation-table {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+}
+
+.simulation-table th,
+.simulation-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color, #777);
+}
+
+.simulation-error {
+    font-weight: 600;
+}
+
+@media (max-width: 650px) {
+    .simulation-heading {
+        align-items: flex-start;
+    }
+
+    .simulation-form-grid,
+    .simulation-score-grid {
+        grid-template-columns: 1fr;
+    }
+}

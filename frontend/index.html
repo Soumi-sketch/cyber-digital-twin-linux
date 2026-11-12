@@ -1839,6 +1839,95 @@
     </button>
 </section>
 
+
+<section class="card simulation-section" id="attackSimulationSection">
+    <div class="simulation-heading">
+        <div>
+            <h2>What-if Attack Simulation</h2>
+            <p>Model hypothetical security threats without executing attacks.</p>
+        </div>
+        <button type="button" id="simulationRefreshButton">Refresh History</button>
+    </div>
+
+    <div class="simulation-mode-note">
+        DRY-RUN ONLY — No commands, attacks, firewall changes, file changes,
+        or real incident creation occur.
+    </div>
+
+    <div class="simulation-form-grid">
+        <div>
+            <label for="simulationScenario">Attack Scenario</label>
+            <select id="simulationScenario">
+                <option value="">Loading scenarios...</option>
+            </select>
+        </div>
+        <div>
+            <label for="simulationTarget">Target Hostname (optional)</label>
+            <input id="simulationTarget" type="text"
+                   maxlength="253" placeholder="e.g. prac-server">
+        </div>
+    </div>
+
+    <label for="simulationParameters">Scenario Parameters (JSON)</label>
+    <textarea id="simulationParameters" rows="7" spellcheck="false">{
+  "attempts": 50,
+  "unique_ips": 3
+}</textarea>
+
+    <div class="simulation-actions">
+        <button type="button" id="runSimulationButton">
+            Run What-if Simulation
+        </button>
+        <span id="simulationPermission"></span>
+    </div>
+
+    <p id="simulationStatus" role="status">
+        Waiting for simulation data...
+    </p>
+
+    <div id="simulationResult" class="simulation-result" hidden>
+        <h3>Simulation Assessment</h3>
+        <div class="simulation-score-grid">
+            <div><span>Risk Score</span><strong id="simulationRiskScore">--</strong></div>
+            <div><span>Severity</span><strong id="simulationSeverity">--</strong></div>
+            <div><span>Mode</span><strong id="simulationMode">DRY-RUN</strong></div>
+        </div>
+        <p id="simulationImpactSummary"></p>
+
+        <h4>Predicted Effects</h4>
+        <ul id="simulationEffects"></ul>
+
+        <h4>Recommended Security Controls</h4>
+        <ul id="simulationControls"></ul>
+
+        <details>
+            <summary>Full simulation result</summary>
+            <pre id="simulationRawResult"></pre>
+        </details>
+    </div>
+
+    <h3>Simulation History</h3>
+    <div class="simulation-table-wrap">
+        <table class="simulation-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Scenario</th>
+                    <th>Target</th>
+                    <th>Risk</th>
+                    <th>Severity</th>
+                    <th>Mode</th>
+                    <th>Created</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="simulationHistoryTable">
+                <tr><td colspan="8">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
 </body>
 
 </html>

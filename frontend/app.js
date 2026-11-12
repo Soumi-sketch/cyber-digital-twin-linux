@@ -619,6 +619,9 @@ if (responseSection) {
     // Phase 27.2 - Fleet overview refresh
     loadFleetOverview();
 
+    // Phase 28 - What-if attack simulation
+    setupAttackSimulationDashboard();
+
     // Phase 27.3 - Individual host drill-down
     document.getElementById("fleetHostGrid")?.addEventListener(
         "click",
@@ -6186,3 +6189,314 @@ async function loadNetworkSecurityDashboard() {
 
 document.getElementById("netRefreshBtn")
     ?.addEventListener("click", loadNetworkSecurityDashboard);
+
+
+// ============================================================
+// PHASE 28 - WHAT-IF ATTACK SIMULATION DASHBOARD
+// ============================================================
+
+const simulationParameterPresets = {
+    SSH_BRUTE_FORCE: {
+        attempts: 50,
+        unique_ips: 3
+    },
+    PRIVILEGE_ESCALATION: {
+        target_privilege: "root",
+        exploit_complexity: "medium"
+    },
+    FILE_TAMPERING: {
+        critical_file: true,
+        integrity_protection: true
+    },
+    SUSPICIOUS_PROCESS: {
+        process_risk: "high",
+        privileged: false
+    },
+    NETWORK_EXPOSURE: {
+        exposed_ports: 5,
+        internet_exposed: false
+    },
+    DATA_EXFILTRATION: {
+        data_volume_mb: 500,
+        sensitive_data: true,
+        encrypted: false
+    }
+};
+
+let attackSimulationScenarios = [];
+
+function simulationElement(id) {
+    return document.getElementById(id);
+}
+
+function setSimulationStatus(message, isError = false) {
+    const status = simulationElement("simulationStatus");
+    if (!status) return;
+
+    status.textContent = message;
+    status.classList.toggle("simulation-error", isError);
+}
+
+function showSimulationResult(result) {
+    const container = simulationElement("simulationResult");
+    if (!container) return;
+
+    const impact = result.predicted_impact || {};
+    const effects = Array.isArray(impact.effects) ? impact.effects : [];
+    const controls = Array.isArray(result.recommended_controls)
+        ? result.recommended_controls : [];
+
+    simulationElement("simulationRiskScore").textContent =
+        `${result.risk_score ?? "--"}/100`;
+
+    simulationElement("simulationSeverity").textContent =
+        result.severity || "--";
+
+    simulationElement("simulationMode").textContent =
+        result.simulation_mode || "DRY-RUN";
+
+    simulationElement("simulationImpactSummary").textContent =
+        impact.impact_summary || "No impact summary available.";
+
+    simulationElement("simulationEffects").innerHTML =
+        effects.length
+            ? effects.map(item => `<li>${escapeHtml(item)}</li>`).join("")
+            : "<li>No predicted effects.</li>";
+
+    simulationElement("simulationControls").innerHTML =
+        controls.length
+            ? controls.map(item => `<li>${escapeHtml(item)}</li>`).join("")
+            : "<li>No recommendations.</li>";
+
+    simulationElement("simulationRawResult").textContent =
+        JSON.stringify(result, null, 2);
+
+    container.hidden = false;
+}
+
+async function loadAttackSimulationScenarios() {
+    const select = simulationElement("simulationScenario");
+    if (!select) return;
+
+    try {
+        const response = await apiFetch(`${API}/simulation/scenarios`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        attackSimulationScenarios = data.scenarios || [];
+
+        select.innerHTML = attackSimulationScenarios.map(item =>
+            `<option value="${escapeHtml(item.scenario_type)}">${
+                escapeHtml(item.name)
+            }</option>`
+        ).join("");
+
+        updateSimulationParameterPreset();
+        setSimulationStatus(
+            `${attackSimulationScenarios.length} scenarios loaded.`
+        );
+    } catch (error) {
+        console.error("Simulation scenario loading failed:", error);
+        setSimulationStatus(
+            `Could not load scenarios: ${error.message}`, true
+        );
+    }
+}
+
+function updateSimulationParameterPreset() {
+    const scenario = simulationElement("simulationScenario")?.value;
+    const textarea = simulationElement("simulationParameters");
+
+    if (!textarea || !scenario) return;
+
+    const preset = simulationParameterPresets[scenario];
+    if (preset) {
+        textarea.value = JSON.stringify(preset, null, 2);
+    }
+}
+
+async function runAttackSimulation() {
+    const button = simulationElement("runSimulationButton");
+    const role = currentUserRole;
+
+    if (!["admin", "analyst"].includes(role)) {
+        setSimulationStatus(
+            "Your role has read-only access to simulations.", true
+        );
+        return;
+    }
+
+    const scenario = simulationElement("simulationScenario").value;
+    const target = simulationElement("simulationTarget").value.trim();
+
+    let parameters;
+
+    try {
+        parameters = JSON.parse(
+            simulationElement("simulationParameters").value
+        );
+
+        if (
+            parameters === null ||
+            Array.isArray(parameters) ||
+            typeof parameters !== "object"
+        ) {
+            throw new Error("Parameters must be a JSON object.");
+        }
+    } catch (error) {
+        setSimulationStatus(
+            `Invalid parameters: ${error.message}`, true
+        );
+        return;
+    }
+
+    button.disabled = true;
+    button.textContent = "Simulating...";
+    setSimulationStatus("Calculating hypothetical risk and impact...");
+
+    try {
+        const response = await apiFetch(`${API}/simulation/run`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                scenario_type: scenario,
+                target_hostname: target || null,
+                parameters
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.detail || `HTTP ${response.status}`
+            );
+        }
+
+        showSimulationResult(data);
+        setSimulationStatus(
+            `Simulation #${data.simulation_id} saved successfully. No attack was executed.`
+        );
+
+        await loadAttackSimulationHistory();
+    } catch (error) {
+        console.error("Simulation failed:", error);
+        setSimulationStatus(
+            `Simulation failed: ${error.message}`, true
+        );
+    } finally {
+        button.disabled = false;
+        button.textContent = "Run What-if Simulation";
+    }
+}
+
+async function loadAttackSimulationHistory() {
+    const tbody = simulationElement("simulationHistoryTable");
+    if (!tbody) return;
+
+    try {
+        const response = await apiFetch(
+            `${API}/simulation/history?limit=50`
+        );
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        const rows = data.simulations || [];
+
+        tbody.innerHTML = rows.length
+            ? rows.map(item => `
+                <tr>
+                    <td>${escapeHtml(item.id)}</td>
+                    <td>${escapeHtml(item.scenario_type)}</td>
+                    <td>${escapeHtml(item.target_hostname || "Fleet")}</td>
+                    <td>${escapeHtml(item.risk_score)}</td>
+                    <td>${escapeHtml(item.severity)}</td>
+                    <td>${escapeHtml(item.simulation_mode)}</td>
+                    <td>${escapeHtml(
+                        item.created_at
+                            ? new Date(item.created_at).toLocaleString()
+                            : "--"
+                    )}</td>
+                    <td>
+                        <button type="button"
+                            data-simulation-detail="${escapeHtml(item.id)}">
+                            View
+                        </button>
+                    </td>
+                </tr>
+            `).join("")
+            : '<tr><td colspan="8">No simulation history yet.</td></tr>';
+    } catch (error) {
+        console.error("Simulation history failed:", error);
+        tbody.innerHTML =
+            `<tr><td colspan="8">${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+
+async function loadAttackSimulationDetail(simulationId) {
+    try {
+        const response = await apiFetch(
+            `${API}/simulation/history/${encodeURIComponent(simulationId)}`
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        const result = data.result || {};
+        result.simulation_id = data.id;
+        result.created_at = data.created_at;
+        showSimulationResult(result);
+
+        setSimulationStatus(`Viewing saved simulation #${data.id}.`);
+    } catch (error) {
+        setSimulationStatus(
+            `Could not load simulation: ${error.message}`, true
+        );
+    }
+}
+
+function setupAttackSimulationDashboard() {
+    const runButton = simulationElement("runSimulationButton");
+    const refreshButton = simulationElement("simulationRefreshButton");
+    const scenarioSelect = simulationElement("simulationScenario");
+    const historyTable = simulationElement("simulationHistoryTable");
+
+    if (!runButton || runButton.dataset.initialized === "true") return;
+
+    runButton.dataset.initialized = "true";
+
+    const canRun = ["admin", "analyst"].includes(currentUserRole);
+
+    runButton.disabled = !canRun;
+    simulationElement("simulationPermission").textContent = canRun
+        ? `Signed in as ${currentUserRole.toUpperCase()} — simulation enabled`
+        : "VIEWER — read-only access";
+
+    runButton.addEventListener("click", runAttackSimulation);
+    refreshButton?.addEventListener(
+        "click",
+        loadAttackSimulationHistory
+    );
+    scenarioSelect?.addEventListener(
+        "change",
+        updateSimulationParameterPreset
+    );
+
+    historyTable?.addEventListener("click", event => {
+        const button = event.target.closest(
+            "[data-simulation-detail]"
+        );
+
+        if (button) {
+            loadAttackSimulationDetail(
+                button.dataset.simulationDetail
+            );
+        }
+    });
+
+    loadAttackSimulationScenarios();
+    loadAttackSimulationHistory();
+}
