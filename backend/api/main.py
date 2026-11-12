@@ -46,6 +46,7 @@ from backend.security.rate_limiter import limiter
 from backend.security.risk_engine import analyze_ssh_events
 from backend.security.alert_engine import generate_security_alerts
 from backend.security.fleet_risk_engine import calculate_fleet_risk
+from backend.security.fleet_alert_engine import calculate_fleet_alerts
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Depends
 from sqlalchemy import text
@@ -3138,3 +3139,17 @@ def get_fleet_security_risk(
     )
 ):
     return calculate_fleet_risk()
+
+
+# ============================================================
+# PHASE 27.8 - FLEET-WIDE SECURITY ALERT AGGREGATION
+# ============================================================
+
+@app.get("/fleet/security-alerts")
+def get_fleet_security_alerts(
+    limit: int = Query(200, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    return calculate_fleet_alerts(limit)

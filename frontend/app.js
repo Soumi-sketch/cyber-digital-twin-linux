@@ -1263,6 +1263,82 @@ async function loadFleetSecurityRisk() {
     }
 }
 
+
+// ============================================================
+// PHASE 27.8 - FLEET-WIDE SECURITY ALERTS
+// ============================================================
+
+async function loadFleetSecurityAlerts() {
+    const rows = document.getElementById("fleetSecurityAlertRows");
+    if (!rows) return;
+
+    try {
+        const response = await apiFetch(
+            `${API}/fleet/security-alerts?limit=200`,
+            { method: "GET", cache: "no-store" }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const summary = data.summary || {};
+        const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+
+        document.getElementById("fleetAlertTotal").textContent =
+            summary.total_alerts ?? 0;
+        document.getElementById("fleetAlertCritical").textContent =
+            summary.critical_alerts ?? 0;
+        document.getElementById("fleetAlertHigh").textContent =
+            summary.high_alerts ?? 0;
+        document.getElementById("fleetAlertHosts").textContent =
+            summary.affected_hosts ?? 0;
+
+        const sources = summary.source_counts || {};
+        document.getElementById("fleetAlertSources").innerHTML =
+            ["SSH", "PROCESS_SERVICE", "NETWORK"].map(source => `
+                <div class="fleet-alert-source">
+                    <span>${escapeHtml(source.replace("_", " "))}</span>
+                    <strong>${Number(sources[source] || 0)}</strong>
+                </div>
+            `).join("");
+
+        rows.innerHTML = alerts.length
+            ? alerts.map(item => {
+                const severity = String(item.severity || "LOW").toLowerCase();
+
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.created_at || "")}</td>
+                        <td>${escapeHtml(item.hostname || "Unknown")}</td>
+                        <td>${escapeHtml(item.source || "")}</td>
+                        <td>${escapeHtml(item.alert_type || "")}</td>
+                        <td><span class="risk-level-${severity}">
+                            ${escapeHtml(item.severity || "LOW")}
+                        </span></td>
+                        <td>${Number(item.risk_score || 0)}</td>
+                        <td>${escapeHtml(
+                            `${item.title || ""} ${item.details || ""}`
+                        )}</td>
+                    </tr>
+                `;
+            }).join("")
+            : '<tr><td colspan="7">No fleet security alerts recorded.</td></tr>';
+
+        document.getElementById("fleetAlertsUpdated").textContent =
+            `Updated: ${new Date(data.generated_at || Date.now()).toLocaleString()}`;
+
+    } catch (error) {
+        console.error("Fleet security alerts error:", error);
+        rows.innerHTML =
+            '<tr><td colspan="7">Unable to load fleet security alerts.</td></tr>';
+    }
+}
+
+document.getElementById("fleetAlertsRefreshBtn")
+    ?.addEventListener("click", loadFleetSecurityAlerts);
+
 async function loadFleetOverview() {
 
     const hostGrid = document.getElementById("fleetHostGrid");
@@ -1287,6 +1363,7 @@ async function loadFleetOverview() {
 
         const data = await response.json();
         loadFleetSecurityRisk();
+        loadFleetSecurityAlerts();
         const summary = data.summary || {};
 
         document.getElementById("fleetTotal").innerText =

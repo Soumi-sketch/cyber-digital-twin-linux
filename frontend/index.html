@@ -177,7 +177,67 @@
             </div>
         </section>
 
-        <!-- =====================================================
+
+<!-- =====================================================
+     PHASE 27.8 - FLEET-WIDE SECURITY ALERTS
+====================================================== -->
+
+<section class="card fleet-alert-section" id="fleetSecurityAlertsSection">
+    <div class="fleet-alert-heading">
+        <div>
+            <h3>Fleet-Wide Security Alerts</h3>
+            <p>Combined SSH, process/service and network security alerts.</p>
+        </div>
+        <span id="fleetAlertsUpdated">Waiting for data...</span>
+    </div>
+
+    <div class="fleet-alert-summary">
+        <div class="fleet-alert-card">
+            <span>Total Alerts</span>
+            <strong id="fleetAlertTotal">--</strong>
+        </div>
+        <div class="fleet-alert-card">
+            <span>Critical</span>
+            <strong id="fleetAlertCritical">--</strong>
+        </div>
+        <div class="fleet-alert-card">
+            <span>High</span>
+            <strong id="fleetAlertHigh">--</strong>
+        </div>
+        <div class="fleet-alert-card">
+            <span>Affected Hosts</span>
+            <strong id="fleetAlertHosts">--</strong>
+        </div>
+    </div>
+
+    <div id="fleetAlertSources" class="fleet-alert-sources"></div>
+
+    <h4>Combined Alert Timeline</h4>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Host</th>
+                    <th>Source</th>
+                    <th>Alert Type</th>
+                    <th>Severity</th>
+                    <th>Risk Score</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="fleetSecurityAlertRows">
+                <tr><td colspan="7">Loading fleet alerts...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <button id="fleetAlertsRefreshBtn" type="button">
+        Refresh Fleet Alerts
+    </button>
+</section>
+
+<!-- =====================================================
      PHASE 27.5 - CROSS-SERVER RESOURCE COMPARISON
 ====================================================== -->
 

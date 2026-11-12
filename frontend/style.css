@@ -1088,3 +1088,62 @@ body:not(.auth-locked) #loginScreen {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+/* PHASE 27.8 - FLEET-WIDE SECURITY ALERTS */
+
+.fleet-alert-section {
+    margin-top: 20px;
+}
+
+.fleet-alert-heading,
+.fleet-alert-summary,
+.fleet-alert-sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fleet-alert-summary {
+    margin: 18px 0;
+}
+
+.fleet-alert-card,
+.fleet-alert-source {
+    flex: 1 1 140px;
+    padding: 14px;
+    border: 1px solid var(--border-color, #555);
+    border-radius: 8px;
+}
+
+.fleet-alert-card span,
+.fleet-alert-source span {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.fleet-alert-card strong,
+.fleet-alert-source strong {
+    display: block;
+    margin-top: 7px;
+    font-size: 1.5rem;
+}
+
+.fleet-alert-sources {
+    margin-bottom: 20px;
+}
+
+.fleet-alert-section .table-container {
+    overflow-x: auto;
+}
+
+.fleet-alert-section table {
+    min-width: 850px;
+    width: 100%;
+}
+
+.fleet-alert-section td {
+    overflow-wrap: anywhere;
+}
