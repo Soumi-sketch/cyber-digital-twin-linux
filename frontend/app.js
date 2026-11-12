@@ -855,6 +855,13 @@ function startAutoRefresh() {
 
     refreshIntervals = [];
 
+    // Phase 30 - Automatic fleet refresh
+    refreshIntervals.push(
+        setInterval(
+            loadFleetOverview,
+            10000
+        )
+    );
 
     refreshIntervals.push(
         setInterval(
