@@ -1928,6 +1928,78 @@
     </div>
 </section>
 
+
+<section class="card" id="phase29ResponseSection">
+    <h2>Phase 29 - Advanced Incident Response</h2>
+    <p>Policy-driven response planning. All actions are DRY-RUN only.</p>
+
+    <div class="form-group">
+        <label for="p29IncidentId">Incident ID</label>
+        <input id="p29IncidentId" placeholder="Example: PHASE29-TEST-001">
+    </div>
+    <div class="form-group">
+        <label for="p29IncidentType">Incident type</label>
+        <select id="p29IncidentType">
+            <option>SSH_BRUTE_FORCE</option>
+            <option>PRIVILEGE_ESCALATION</option>
+            <option>FILE_TAMPERING</option>
+            <option>SUSPICIOUS_PROCESS</option>
+            <option>NETWORK_EXPOSURE</option>
+            <option>OTHER_SECURITY</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="p29Severity">Severity</label>
+        <select id="p29Severity">
+            <option>CRITICAL</option>
+            <option>HIGH</option>
+            <option>MEDIUM</option>
+            <option>LOW</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="p29SourceIp">Source IP (optional)</label>
+        <input id="p29SourceIp" placeholder="192.168.38.147">
+    </div>
+    <div class="form-group">
+        <label for="p29TargetHost">Target hostname (optional)</label>
+        <input id="p29TargetHost" placeholder="prac-server">
+    </div>
+    <div class="form-group">
+        <label for="p29Reason">Response reason</label>
+        <input id="p29Reason" placeholder="Explain why this response plan is needed">
+    </div>
+
+    <button id="p29CreatePlan">Create response plan</button>
+    <button id="p29Refresh" type="button">Refresh history</button>
+
+    <p id="p29Status" role="status">Loading response policies...</p>
+    <pre id="p29Result" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+
+    <h3>Response plan history</h3>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Incident</th>
+                    <th>Severity</th>
+                    <th>Playbook</th>
+                    <th>Status</th>
+                    <th>Mode</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="p29History">
+                <tr><td colspan="7">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Response action audit</h3>
+    <pre id="p29Audit" style="white-space:pre-wrap;overflow-wrap:anywhere">Loading...</pre>
+</section>
+
 </body>
 
 </html>

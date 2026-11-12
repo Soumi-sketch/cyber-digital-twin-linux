@@ -622,6 +622,9 @@ if (responseSection) {
     // Phase 28 - What-if attack simulation
     setupAttackSimulationDashboard();
 
+    // Phase 29 - Advanced Incident Response
+    setupPhase29Response();
+
     // Phase 27.3 - Individual host drill-down
     document.getElementById("fleetHostGrid")?.addEventListener(
         "click",
@@ -6499,4 +6502,201 @@ function setupAttackSimulationDashboard() {
 
     loadAttackSimulationScenarios();
     loadAttackSimulationHistory();
+}
+
+// ============================================================
+// PHASE 29 - ADVANCED INCIDENT RESPONSE
+// ============================================================
+
+async function p29Request(path, options = {}) {
+    const response = await apiFetch(`${API}${path}`, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        }
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.detail || `HTTP ${response.status}`);
+    }
+
+    return data;
+}
+
+function p29Status(message) {
+    const element = document.getElementById("p29Status");
+    if (element) element.textContent = message;
+}
+
+function p29ShowResult(data) {
+    const element = document.getElementById("p29Result");
+    if (element) element.textContent = JSON.stringify(data, null, 2);
+}
+
+async function p29LoadHistory() {
+    try {
+        const [plans, audit] = await Promise.all([
+            p29Request("/security/response/plans?limit=30"),
+            p29Request("/security/response/orchestration-audit?limit=30")
+        ]);
+
+        const body = document.getElementById("p29History");
+        if (!body) return;
+
+        if (!plans.length) {
+            body.innerHTML = '<tr><td colspan="7">No response plans yet.</td></tr>';
+        } else {
+            body.innerHTML = plans.map(plan => {
+                const id = Number(plan.id);
+                const role = String(currentUserRole || "").toLowerCase();
+                const canApprove = role === "admin" && plan.status === "PENDING_APPROVAL";
+                const canExecute = role === "admin" && plan.status === "APPROVED";
+                const canRollback = role === "admin" &&
+                    ["APPROVED", "EXECUTED"].includes(plan.status);
+
+                return `<tr>
+                    <td>${id}</td>
+                    <td>${escapeHtml(plan.incident_id)}</td>
+                    <td>${escapeHtml(plan.severity)}</td>
+                    <td>${escapeHtml(plan.playbook_id)}</td>
+                    <td>${escapeHtml(plan.status)}</td>
+                    <td>${escapeHtml(plan.execution_mode)}</td>
+                    <td>
+                        ${canApprove ? `<button data-p29-approve="${id}">Approve</button>` : ""}
+                        ${canExecute ? `<button data-p29-execute="${id}">DRY-RUN</button>` : ""}
+                        ${canRollback ? `<button data-p29-rollback="${id}">Record rollback</button>` : ""}
+                        <button data-p29-view="${id}">View</button>
+                    </td>
+                </tr>`;
+            }).join("");
+        }
+
+        document.getElementById("p29Audit").textContent =
+            JSON.stringify(audit, null, 2);
+
+    } catch (error) {
+        p29Status(`History error: ${error.message}`);
+    }
+}
+
+async function p29CreatePlan() {
+    try {
+        const payload = {
+            incident_id: document.getElementById("p29IncidentId").value.trim(),
+            incident_type: document.getElementById("p29IncidentType").value,
+            severity: document.getElementById("p29Severity").value,
+            source_ip: document.getElementById("p29SourceIp").value.trim() || null,
+            target_hostname: document.getElementById("p29TargetHost").value.trim() || null,
+            reason: document.getElementById("p29Reason").value.trim()
+        };
+
+        p29Status("Creating response plan...");
+
+        const result = await p29Request("/security/response/plans", {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        p29ShowResult(result);
+        p29Status("Plan created. Awaiting administrator approval.");
+        await p29LoadHistory();
+
+    } catch (error) {
+        p29Status(`Plan creation failed: ${error.message}`);
+    }
+}
+
+async function p29Action(id, action) {
+    try {
+        let options = { method: "POST" };
+
+        if (action === "rollback") {
+            const reason = prompt("Reason for recording rollback:");
+            if (!reason || reason.trim().length < 5) return;
+            options.body = JSON.stringify({ reason: reason.trim() });
+        }
+
+        p29Status(`Processing ${action} for plan #${id}...`);
+
+        const result = await p29Request(
+            `/security/response/plans/${id}/${action}`,
+            options
+        );
+
+        p29ShowResult(result);
+        p29Status(`${action} recorded. Infrastructure remains unchanged.`);
+        await p29LoadHistory();
+
+    } catch (error) {
+        p29Status(`${action} failed: ${error.message}`);
+    }
+}
+
+async function setupPhase29Response() {
+    const section = document.getElementById("phase29ResponseSection");
+    if (!section) return;
+
+    const role = String(currentUserRole || "").toLowerCase();
+
+    const createButton = document.getElementById("p29CreatePlan");
+    if (createButton) {
+        createButton.disabled = role === "viewer";
+    }
+
+    if (section.dataset.initialized !== "yes") {
+        section.dataset.initialized = "yes";
+
+        document.getElementById("p29CreatePlan")
+            ?.addEventListener("click", p29CreatePlan);
+
+        document.getElementById("p29Refresh")
+            ?.addEventListener("click", p29LoadHistory);
+
+        section.addEventListener("click", async event => {
+        const button = event.target.closest("button[data-p29-approve], button[data-p29-execute], button[data-p29-rollback], button[data-p29-view]");
+        if (!button) return;
+
+        if (button.dataset.p29Approve) {
+            await p29Action(button.dataset.p29Approve, "approve");
+        } else if (button.dataset.p29Execute) {
+            await p29Action(button.dataset.p29Execute, "execute");
+        } else if (button.dataset.p29Rollback) {
+            await p29Action(button.dataset.p29Rollback, "rollback");
+        } else if (button.dataset.p29View) {
+            try {
+                const result = await p29Request(
+                    `/security/response/plans/${button.dataset.p29View}`
+                );
+                p29ShowResult(result);
+                const audit = await p29Request(
+                    `/security/response/orchestration-audit?run_id=${button.dataset.p29View}`
+                );
+                document.getElementById("p29Audit").textContent =
+                    JSON.stringify(audit, null, 2);
+            } catch (error) {
+                p29Status(error.message);
+            }
+        }
+        });
+    }
+
+    try {
+        const [policies, playbooks, mapping] = await Promise.all([
+            p29Request("/security/response/policies"),
+            p29Request("/security/response/playbooks"),
+            p29Request("/security/response/threat-mapping")
+        ]);
+
+        p29Status(
+            `Phase 29 ready: ${policies.length} policies, ` +
+            `${playbooks.length} playbooks, ${mapping.length} threat mappings. DRY-RUN only.`
+        );
+        await p29LoadHistory();
+
+    } catch (error) {
+        p29Status(`Initialization failed: ${error.message}`);
+    }
 }

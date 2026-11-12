@@ -98,6 +98,8 @@ from backend.auth.dependencies import (
 from pydantic import BaseModel, Field
 from typing import Any, Dict
 
+from backend.api.phase29_response import router as phase29_response_router
+
 from backend.simulation.attack_simulator import (
     get_scenarios,
     run_simulation,
@@ -110,6 +112,8 @@ app = FastAPI(
     title="AI Powered Cyber Digital Twin",
     version="1.0"
 )
+
+app.include_router(phase29_response_router)
 
 class SecurityResponseExecutionRequest(BaseModel):
 
