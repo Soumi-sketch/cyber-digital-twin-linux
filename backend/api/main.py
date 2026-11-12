@@ -2510,6 +2510,57 @@ def get_inventory_host(
     return host
 
 
+
+
+@app.get("/inventory/hosts/{hostname}/metrics")
+def get_inventory_host_metrics(
+    hostname: str,
+    limit: int = 50,
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    limit = max(1, min(limit, 100))
+
+    with engine.connect() as connection:
+        host = connection.execute(text("""
+            SELECT hostname, ip_address
+            FROM monitored_hosts
+            WHERE hostname = :hostname;
+        """), {
+            "hostname": hostname
+        }).mappings().first()
+
+        if not host:
+            raise HTTPException(
+                status_code=404,
+                detail="Host not found"
+            )
+
+        rows = connection.execute(text("""
+            SELECT
+                hostname,
+                cpu_usage,
+                memory_usage,
+                disk_usage,
+                collected_at
+            FROM system_metrics
+            WHERE hostname = :hostname
+            ORDER BY collected_at DESC
+            LIMIT :limit;
+        """), {
+            "hostname": hostname,
+            "limit": limit
+        }).mappings().all()
+
+    return {
+        "hostname": host["hostname"],
+        "ip_address": host["ip_address"],
+        "total": len(rows),
+        "metrics": [dict(row) for row in rows]
+    }
+
+
 @app.post("/inventory/hosts", status_code=201)
 def register_inventory_host(
     request: HostInventoryCreate,

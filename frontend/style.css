@@ -813,3 +813,94 @@ body:not(.auth-locked) #loginScreen {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   PHASE 27.3 - INDIVIDUAL SERVER DETAILS
+   ============================================================ */
+
+#fleetHostDetails {
+    margin: 25px 0;
+    padding: 20px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.14);
+}
+
+#fleetHostDetails[hidden] {
+    display: none;
+}
+
+#fleetDetailClose,
+.fleet-detail-button {
+    padding: 9px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #0077cc;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.fleet-detail-button {
+    margin-top: 15px;
+}
+
+#fleetDetailClose:hover,
+.fleet-detail-button:hover {
+    background: #005fa3;
+}
+
+.fleet-detail-information {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.fleet-detail-item {
+    min-width: 0;
+    padding: 13px;
+    background: #f4f7fa;
+    border-radius: 7px;
+}
+
+.fleet-detail-item span {
+    display: block;
+    color: #555;
+    font-size: 12px;
+}
+
+.fleet-detail-item strong {
+    display: block;
+    margin-top: 6px;
+    overflow-wrap: anywhere;
+}
+
+.fleet-history-wrapper {
+    overflow-x: auto;
+}
+
+.fleet-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+}
+
+.fleet-history-table th,
+.fleet-history-table td {
+    padding: 11px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    font-size: 13px;
+}
+
+#fleetDetailMessage {
+    font-size: 13px;
+    color: #555;
+}
+
+@media (max-width: 650px) {
+    .fleet-detail-information {
+        grid-template-columns: 1fr;
+    }
+}

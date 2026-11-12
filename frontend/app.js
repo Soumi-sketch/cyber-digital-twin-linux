@@ -619,6 +619,25 @@ if (responseSection) {
     // Phase 27.2 - Fleet overview refresh
     loadFleetOverview();
 
+    // Phase 27.3 - Individual host drill-down
+    document.getElementById("fleetHostGrid")?.addEventListener(
+        "click",
+        event => {
+            const button = event.target.closest("[data-fleet-host]");
+
+            if (button) {
+                openFleetHostDetails(button.dataset.fleetHost);
+            }
+        }
+    );
+
+    document.getElementById("fleetDetailClose")?.addEventListener(
+        "click",
+        () => {
+            document.getElementById("fleetHostDetails").hidden = true;
+        }
+    );
+
     refreshIntervals.push(
         setInterval(
             loadFleetOverview,
@@ -1153,6 +1172,14 @@ async function loadFleetOverview() {
                         <div class="fleet-host-footer">
                             <span>Last seen: ${escapeHtml(lastSeen)}</span>
                         </div>
+
+                        <button
+                            type="button"
+                            class="fleet-detail-button"
+                            data-fleet-host="${escapeHtml(host.hostname || "")}"
+                        >
+                            View Details
+                        </button>
                     </article>
                 `;
 
@@ -1172,6 +1199,128 @@ async function loadFleetOverview() {
 
         hostGrid.innerHTML =
             '<p class="fleet-error">Unable to load fleet information. Check API connectivity and login status.</p>';
+
+    }
+}
+
+
+
+// ============================================================
+// PHASE 27.3 - INDIVIDUAL SERVER DETAILS
+// ============================================================
+
+async function openFleetHostDetails(hostname) {
+
+    const panel = document.getElementById("fleetHostDetails");
+    const information = document.getElementById("fleetDetailInformation");
+    const historyBody = document.getElementById("fleetDetailHistory");
+    const message = document.getElementById("fleetDetailMessage");
+
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    document.getElementById("fleetDetailTitle").innerText =
+        `Server: ${hostname}`;
+
+    document.getElementById("fleetDetailSubtitle").innerText =
+        "Loading registered host information...";
+
+    information.innerHTML = "<p>Loading host details...</p>";
+    historyBody.innerHTML =
+        '<tr><td colspan="4">Loading resource history...</td></tr>';
+    message.innerText = "";
+
+    try {
+
+        const safeHostname = encodeURIComponent(hostname);
+
+        const [hostResponse, metricsResponse] = await Promise.all([
+            apiFetch(
+                `${API}/inventory/hosts/${safeHostname}`,
+                { method: "GET", cache: "no-store" }
+            ),
+            apiFetch(
+                `${API}/inventory/hosts/${safeHostname}/metrics?limit=50`,
+                { method: "GET", cache: "no-store" }
+            )
+        ]);
+
+        if (!hostResponse.ok) {
+            throw new Error(`Host details HTTP ${hostResponse.status}`);
+        }
+
+        if (!metricsResponse.ok) {
+            throw new Error(`Metrics history HTTP ${metricsResponse.status}`);
+        }
+
+        const host = await hostResponse.json();
+        const history = await metricsResponse.json();
+
+        document.getElementById("fleetDetailTitle").innerText =
+            `Server: ${host.hostname}`;
+
+        document.getElementById("fleetDetailSubtitle").innerText =
+            `${host.ip_address} | ${host.enabled ? "Enabled" : "Disabled"}`;
+
+        const formatDate = value =>
+            value ? new Date(value).toLocaleString() : "Not available";
+
+        const fields = [
+            ["Hostname", host.hostname],
+            ["IP Address", host.ip_address],
+            ["Username", host.username || "Not configured"],
+            ["Authentication Method", host.auth_method || "Not available"],
+            ["Registration Source", host.registration_source || "Not available"],
+            ["Description", host.description || "No description"],
+            ["Enabled", host.enabled ? "Yes" : "No"],
+            ["Registered At", formatDate(host.registered_at)],
+            ["Last Updated", formatDate(host.updated_at)],
+            ["Last Seen", formatDate(host.last_seen)]
+        ];
+
+        information.innerHTML = fields.map(([label, value]) => `
+            <div class="fleet-detail-item">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(value)}</strong>
+            </div>
+        `).join("");
+
+        const metrics = Array.isArray(history.metrics)
+            ? history.metrics
+            : [];
+
+        if (metrics.length === 0) {
+
+            historyBody.innerHTML =
+                '<tr><td colspan="4">No historical metrics available.</td></tr>';
+
+        } else {
+
+            historyBody.innerHTML = metrics.map(metric => `
+                <tr>
+                    <td>${escapeHtml(formatDate(metric.collected_at))}</td>
+                    <td>${escapeHtml(metric.cpu_usage ?? "N/A")}%</td>
+                    <td>${escapeHtml(metric.memory_usage ?? "N/A")}%</td>
+                    <td>${escapeHtml(metric.disk_usage ?? "N/A")}%</td>
+                </tr>
+            `).join("");
+
+        }
+
+        message.innerText =
+            `Loaded ${metrics.length} historical metric records.`;
+
+    } catch (error) {
+
+        console.error("Host details error:", error);
+
+        information.innerHTML =
+            '<p class="fleet-error">Unable to load host details.</p>';
+
+        historyBody.innerHTML =
+            '<tr><td colspan="4">Unable to load resource history.</td></tr>';
+
+        message.innerText = error.message;
 
     }
 }

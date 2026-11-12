@@ -152,6 +152,52 @@
 
     </section>
 
+
+    <!-- =====================================================
+         PHASE 27.3 - INDIVIDUAL SERVER DETAILS
+    ====================================================== -->
+
+    <section id="fleetHostDetails" hidden>
+
+        <div class="fleet-heading">
+            <div>
+                <h2 id="fleetDetailTitle">Server Details</h2>
+                <p id="fleetDetailSubtitle">Individual server information</p>
+            </div>
+
+            <button id="fleetDetailClose" type="button">
+                Close Details
+            </button>
+        </div>
+
+        <div id="fleetDetailInformation" class="fleet-detail-information">
+            Select a server to view its details.
+        </div>
+
+        <h3>Resource History</h3>
+
+        <div class="fleet-history-wrapper">
+            <table class="fleet-history-table">
+                <thead>
+                    <tr>
+                        <th>Collected At</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                        <th>Disk</th>
+                    </tr>
+                </thead>
+                <tbody id="fleetDetailHistory">
+                    <tr>
+                        <td colspan="4">No server selected.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p id="fleetDetailMessage" aria-live="polite"></p>
+
+    </section>
+
     <!-- =====================================================
          CURRENT SYSTEM STATUS
     ====================================================== -->
