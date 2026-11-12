@@ -1053,6 +1053,122 @@ let incidentRetryChart;
 
 
 // ============================================================
+// PHASE 27.5 - CROSS-SERVER RESOURCE COMPARISON
+// ============================================================
+
+let fleetComparisonChart = null;
+
+function renderFleetResourceComparison(hosts) {
+
+    const canvas = document.getElementById("fleetComparisonChart");
+    const rankingContainer = document.getElementById("fleetComparisonRanking");
+
+    if (!canvas || !rankingContainer) {
+        return;
+    }
+
+    const validHosts = hosts.filter(host =>
+        host.cpu_usage !== null &&
+        host.cpu_usage !== undefined &&
+        host.memory_usage !== null &&
+        host.memory_usage !== undefined &&
+        host.disk_usage !== null &&
+        host.disk_usage !== undefined
+    );
+
+    if (fleetComparisonChart) {
+        fleetComparisonChart.destroy();
+        fleetComparisonChart = null;
+    }
+
+    if (validHosts.length === 0) {
+        rankingContainer.innerHTML =
+            "<p>No complete resource metrics are available for comparison.</p>";
+        return;
+    }
+
+    const labels = validHosts.map(host => host.hostname);
+
+    fleetComparisonChart = new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: "CPU (%)",
+                    data: validHosts.map(host => Number(host.cpu_usage))
+                },
+                {
+                    label: "Memory (%)",
+                    data: validHosts.map(host => Number(host.memory_usage))
+                },
+                {
+                    label: "Disk (%)",
+                    data: validHosts.map(host => Number(host.disk_usage))
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: "Usage (%)"
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: "Monitored Servers"
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: "top"
+                }
+            }
+        }
+    });
+
+    const metrics = [
+        { key: "cpu_usage", label: "CPU" },
+        { key: "memory_usage", label: "Memory" },
+        { key: "disk_usage", label: "Disk" }
+    ];
+
+    rankingContainer.innerHTML = metrics.map(metric => {
+
+        const ranked = [...hosts]
+            .filter(host =>
+                host[metric.key] !== null &&
+                host[metric.key] !== undefined
+            )
+            .sort((a, b) =>
+                Number(b[metric.key]) - Number(a[metric.key])
+            );
+
+        const highest = ranked[0];
+
+        return `
+            <div class="fleet-ranking-item">
+                <strong>${metric.label} – Highest usage</strong>
+                <span>
+                    ${highest
+                        ? `${escapeHtml(highest.hostname)}: ${escapeHtml(highest[metric.key])}%`
+                        : "No data"}
+                </span>
+            </div>
+        `;
+    }).join("");
+}
+
+// ============================================================
 // PHASE 27.2 - MULTI-SERVER FLEET OVERVIEW
 // ============================================================
 
@@ -1097,6 +1213,8 @@ async function loadFleetOverview() {
             summary.critical ?? 0;
 
         const hosts = Array.isArray(data.hosts) ? data.hosts : [];
+
+        renderFleetResourceComparison(hosts);
 
 // Populate unique group options from fleet data.
 const groupFilter = document.getElementById("fleetGroupFilter");
