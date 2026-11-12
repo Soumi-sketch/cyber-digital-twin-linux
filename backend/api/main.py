@@ -2345,3 +2345,71 @@ def process_service_alerts(
     )
 ):
     return get_process_service_alerts(limit)
+
+
+# ============================================================
+# PHASE 26 - NETWORK SECURITY MONITORING
+# ============================================================
+
+from backend.security.network_monitor import (
+    ensure_phase26_tables,
+    get_network_summary,
+    get_network_interfaces,
+    get_network_listeners,
+    get_network_connections,
+    get_network_alerts
+)
+
+
+@app.get("/security/network/summary")
+def network_security_summary(
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_phase26_tables()
+    return get_network_summary()
+
+
+@app.get("/security/network/interfaces")
+def network_security_interfaces(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_phase26_tables()
+    return get_network_interfaces(limit)
+
+
+@app.get("/security/network/listeners")
+def network_security_listeners(
+    limit: int = Query(200, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_phase26_tables()
+    return get_network_listeners(limit)
+
+
+@app.get("/security/network/connections")
+def network_security_connections(
+    limit: int = Query(200, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_phase26_tables()
+    return get_network_connections(limit)
+
+
+@app.get("/security/network/alerts")
+def network_security_alerts(
+    limit: int = Query(100, ge=1, le=500),
+    current_user=Depends(
+        require_roles(["admin", "analyst", "viewer"])
+    )
+):
+    ensure_phase26_tables()
+    return get_network_alerts(limit)

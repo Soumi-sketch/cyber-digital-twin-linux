@@ -746,6 +746,16 @@ refreshIntervals.push(
         )
     );
 
+    // Phase 26: Network Security Dashboard
+    loadNetworkSecurityDashboard();
+
+    refreshIntervals.push(
+        setInterval(
+            loadNetworkSecurityDashboard,
+            30000
+        )
+    );
+
     startAutoRefresh();
 
 
@@ -5249,3 +5259,99 @@ async function loadProcessServiceDashboard() {
 document.getElementById("psRefreshBtn")
     ?.addEventListener("click", loadProcessServiceDashboard);
 
+
+
+// ============================================================
+// PHASE 26 - NETWORK SECURITY MONITORING
+// ============================================================
+
+async function loadNetworkSecurityDashboard() {
+    const status = document.getElementById("networkSecurityStatus");
+    if (!status) return;
+
+    try {
+        const paths = [
+            `${API}/security/network/summary`,
+            `${API}/security/network/interfaces?limit=100`,
+            `${API}/security/network/listeners?limit=200`,
+            `${API}/security/network/connections?limit=200`,
+            `${API}/security/network/alerts?limit=100`
+        ];
+
+        const responses = await Promise.all(paths.map(path => apiFetch(path)));
+
+        const data = await Promise.all(responses.map(async response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        }));
+
+        const [summary, interfaces, listeners, connections, alerts] = data;
+
+        document.getElementById("netInterfaceCount").textContent =
+            summary.interface_count ?? 0;
+        document.getElementById("netListenerCount").textContent =
+            summary.listener_count ?? 0;
+        document.getElementById("netConnectionCount").textContent =
+            summary.connection_count ?? 0;
+        document.getElementById("netAlertCount").textContent =
+            summary.open_alerts ?? 0;
+
+        document.getElementById("netInterfacesTable").innerHTML =
+            interfaces.length
+                ? interfaces.map(item => `<tr>
+                    <td>${escapeHtml(item.hostname)}</td>
+                    <td>${escapeHtml(item.interface_name)}</td>
+                    <td>${escapeHtml(item.addresses)}</td>
+                    <td>${escapeHtml(item.mac_address)}</td>
+                    <td>${escapeHtml(item.state)}</td>
+                    <td>${escapeHtml(item.mtu)}</td>
+                </tr>`).join("")
+                : '<tr><td colspan="6">No interface records.</td></tr>';
+
+        document.getElementById("netListenersTable").innerHTML =
+            listeners.length
+                ? listeners.map(item => `<tr>
+                    <td>${escapeHtml(item.hostname)}</td>
+                    <td>${escapeHtml(item.protocol)}</td>
+                    <td>${escapeHtml(item.local_address)}</td>
+                    <td>${escapeHtml(item.local_port)}</td>
+                    <td>${escapeHtml(item.state)}</td>
+                    <td>${escapeHtml(item.process_info)}</td>
+                </tr>`).join("")
+                : '<tr><td colspan="6">No listening ports found.</td></tr>';
+
+        document.getElementById("netConnectionsTable").innerHTML =
+            connections.length
+                ? connections.map(item => `<tr>
+                    <td>${escapeHtml(item.hostname)}</td>
+                    <td>${escapeHtml(item.protocol)}</td>
+                    <td>${escapeHtml(item.state)}</td>
+                    <td>${escapeHtml(item.local_address)}:${escapeHtml(item.local_port)}</td>
+                    <td>${escapeHtml(item.peer_address)}:${escapeHtml(item.peer_port)}</td>
+                    <td>${escapeHtml(item.process_info)}</td>
+                </tr>`).join("")
+                : '<tr><td colspan="6">No active connections found.</td></tr>';
+
+        document.getElementById("netAlertsTable").innerHTML =
+            alerts.length
+                ? alerts.map(item => `<tr>
+                    <td>${escapeHtml(item.hostname)}</td>
+                    <td>${escapeHtml(item.alert_type)}</td>
+                    <td>${escapeHtml(item.severity)}</td>
+                    <td>${escapeHtml(item.risk_score)}</td>
+                    <td>${escapeHtml(item.local_port)}</td>
+                    <td>${escapeHtml(item.details)}</td>
+                </tr>`).join("")
+                : '<tr><td colspan="6">No network alerts recorded.</td></tr>';
+
+        status.textContent = "Network security monitoring data loaded.";
+    } catch (error) {
+        console.error("Phase 26 dashboard error:", error);
+        status.textContent = `Unable to load network data: ${error.message}`;
+    }
+}
+
+document.getElementById("netRefreshBtn")
+    ?.addEventListener("click", loadNetworkSecurityDashboard);

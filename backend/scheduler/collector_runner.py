@@ -35,6 +35,11 @@ from backend.security.process_service_monitor import (
     monitor_host_process_services
 )
 
+from backend.security.network_monitor import (
+    ensure_phase26_tables,
+    monitor_host_network
+)
+
 # CONFIGURE LOGGING
 # ------------------------------------------------
 
@@ -59,6 +64,7 @@ clients = {}
 
 last_fim_scan = 0
 last_process_service_scan = 0
+last_network_scan = 0
 
 
 while True:
@@ -308,5 +314,37 @@ while True:
 
         except Exception:
             logger.exception("Phase 25 monitoring initialization failed")
+
+
+    # PHASE 26 - NETWORK SECURITY SCAN EVERY 120 SECONDS
+    if time.monotonic() - last_network_scan >= 120:
+        last_network_scan = time.monotonic()
+
+        try:
+            ensure_phase26_tables()
+
+            for host_name, client in list(clients.items()):
+                if client is None:
+                    continue
+
+                try:
+                    result = monitor_host_network(host_name, client)
+                    logger.info(
+                        "Phase 26 network scan: %s | Interfaces: %d | "
+                        "Listeners: %d | Connections: %d | Findings: %d",
+                        host_name,
+                        result["interfaces"],
+                        result["listeners"],
+                        result["connections"],
+                        result["findings"]
+                    )
+                except Exception:
+                    logger.exception(
+                        "Phase 26 network monitoring failed for %s",
+                        host_name
+                    )
+
+        except Exception:
+            logger.exception("Phase 26 network monitoring initialization failed")
 
     time.sleep(5)
