@@ -6536,6 +6536,60 @@ function p29ShowResult(data) {
     if (element) element.textContent = JSON.stringify(data, null, 2);
 }
 
+function p29RenderAudit(audit) {
+    const body = document.getElementById("p29Audit");
+    if (!body) return;
+
+    if (!Array.isArray(audit) || audit.length === 0) {
+        body.innerHTML =
+            '<tr><td colspan="6">No audit records found.</td></tr>';
+        return;
+    }
+
+    const eventLabels = {
+        PLAN_CREATED: "Plan Created",
+        APPROVED: "Approved",
+        DRY_RUN_EXECUTED: "Execution Simulated",
+        ROLLBACK_SIMULATED: "Rollback Simulated"
+    };
+
+    body.innerHTML = audit.map(entry => {
+        const details = entry.event_details || {};
+
+        const time = entry.created_at
+            ? new Date(entry.created_at).toLocaleString()
+            : "—";
+
+        const user = entry.performed_by_username ||
+            `User #${entry.performed_by_user_id || "Unknown"}`;
+
+        const event = eventLabels[entry.event_type] ||
+            entry.event_type || "Unknown";
+
+        const detailText = Array.isArray(details.actions)
+            ? details.actions.join(", ")
+            : Array.isArray(details.planned_actions)
+                ? details.planned_actions.join(", ")
+                : details.reason || details.message ||
+                  (details.infrastructure_changed === false
+                    ? "No infrastructure changes"
+                    : "—");
+
+        const mode = details.mode || "—";
+
+        return `
+            <tr>
+                <td>${escapeHtml(time)}</td>
+                <td>${escapeHtml(entry.orchestration_id)}</td>
+                <td>${escapeHtml(user)}</td>
+                <td>${escapeHtml(event)}</td>
+                <td>${escapeHtml(detailText)}</td>
+                <td>${escapeHtml(mode)}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
 async function p29LoadHistory() {
     try {
         const [plans, audit] = await Promise.all([
@@ -6574,8 +6628,7 @@ async function p29LoadHistory() {
             }).join("");
         }
 
-        document.getElementById("p29Audit").textContent =
-            JSON.stringify(audit, null, 2);
+        p29RenderAudit(audit);
 
     } catch (error) {
         p29Status(`History error: ${error.message}`);
@@ -6674,8 +6727,7 @@ async function setupPhase29Response() {
                 const audit = await p29Request(
                     `/security/response/orchestration-audit?run_id=${button.dataset.p29View}`
                 );
-                document.getElementById("p29Audit").textContent =
-                    JSON.stringify(audit, null, 2);
+                p29RenderAudit(audit);
             } catch (error) {
                 p29Status(error.message);
             }

@@ -1930,7 +1930,7 @@
 
 
 <section class="card" id="phase29ResponseSection">
-    <h2>Phase 29 - Advanced Incident Response</h2>
+    <h2>Advanced Incident Response</h2>
     <p>Policy-driven response planning. All actions are DRY-RUN only.</p>
 
     <div class="form-group">
@@ -1996,8 +1996,25 @@
         </table>
     </div>
 
-    <h3>Response action audit</h3>
-    <pre id="p29Audit" style="white-space:pre-wrap;overflow-wrap:anywhere">Loading...</pre>
+<h3>Response Action Audit</h3>
+
+<div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Plan ID</th>
+                <th>User</th>
+                <th>Event</th>
+                <th>Details</th>
+                <th>Mode</th>
+            </tr>
+        </thead>
+        <tbody id="p29Audit">
+            <tr><td colspan="6">Loading audit records...</td></tr>
+        </tbody>
+    </table>
+</div>
 </section>
 
 </body>
