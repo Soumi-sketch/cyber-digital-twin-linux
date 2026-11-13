@@ -12,6 +12,39 @@ function escapeHtml(value) {
 }
 
 // ============================================================
+// SOC CHART THEME - GLOBAL DEFAULTS
+// ============================================================
+
+if (typeof Chart !== "undefined") {
+    Chart.defaults.color = "#e5edf8";
+    Chart.defaults.borderColor = "#526782";
+
+    Chart.defaults.scale.grid.color = "rgba(148, 163, 184, 0.30)";
+    Chart.defaults.scale.ticks.color = "#ffffff";
+    Chart.defaults.scale.ticks.display = true;
+    Chart.defaults.scale.ticks.autoSkip = true;
+    Chart.defaults.scale.ticks.maxTicksLimit = 8;
+    Chart.defaults.scale.grid.display = true;
+    Chart.defaults.scale.grid.color = "rgba(148, 163, 184, 0.35)";
+    Chart.defaults.scale.border.color = "#64748b";
+    Chart.defaults.scale.title.color = "#f1f5f9";
+
+    Chart.defaults.plugins.legend.labels.color = "#e5edf8";
+    Chart.defaults.plugins.title.color = "#f1f5f9";
+
+    Chart.defaults.datasets.line.borderColor = "#38bdf8";
+    Chart.defaults.datasets.line.backgroundColor = "rgba(56, 189, 248, 0.16)";
+    Chart.defaults.datasets.line.borderWidth = 3;
+    Chart.defaults.datasets.line.pointBackgroundColor = "#38bdf8";
+    Chart.defaults.datasets.line.pointBorderColor = "#ffffff";
+    Chart.defaults.datasets.line.pointRadius = 3;
+    Chart.defaults.datasets.line.pointHoverRadius = 6;
+
+    Chart.defaults.datasets.bar.borderColor = "#38bdf8";
+    Chart.defaults.datasets.bar.borderWidth = 1;
+}
+
+// ============================================================
 // AUTHENTICATION
 // ============================================================
 
@@ -6749,10 +6782,6 @@ async function setupPhase29Response() {
             p29Request("/security/response/threat-mapping")
         ]);
 
-        p29Status(
-            `Phase 29 ready: ${policies.length} policies, ` +
-            `${playbooks.length} playbooks, ${mapping.length} threat mappings. DRY-RUN only.`
-        );
         await p29LoadHistory();
 
     } catch (error) {

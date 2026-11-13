@@ -1268,3 +1268,728 @@ body:not(.auth-locked) #loginScreen {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================================
+   COMPACT SOC DASHBOARD - CHART PRESENTATION
+   Visual-only changes; existing chart logic remains untouched.
+   ============================================================ */
+
+.chart-container {
+    position: relative;
+    box-sizing: border-box;
+    min-width: 0;
+    height: 250px;
+    margin: 12px 0 18px;
+    padding: 16px;
+    overflow: hidden;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #dce3eb);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chart-container h2,
+.chart-container h3 {
+    margin: 0 0 12px;
+    font-size: 15px;
+}
+
+.chart-container canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 185px;
+}
+
+.fleet-comparison-chart {
+    position: relative;
+    height: 250px;
+    min-width: 0;
+}
+
+.fleet-comparison-chart canvas {
+    max-height: 230px;
+}
+
+@media (max-width: 700px) {
+    .chart-container {
+        height: 230px;
+        padding: 12px;
+    }
+
+    .chart-container canvas {
+        max-height: 175px;
+    }
+
+    .fleet-comparison-chart {
+        height: 220px;
+    }
+}
+
+/* ============================================================
+   SOC NAVIGATION UPGRADE
+   ============================================================ */
+
+.soc-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    margin: 16px 0 24px;
+    background: #111c2e;
+    border: 1px solid #26364d;
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.soc-nav a {
+    display: inline-block;
+    padding: 9px 14px;
+    color: #dbeafe;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 7px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.soc-nav a:hover,
+.soc-nav a:focus-visible {
+    color: #ffffff;
+    background: #087e9e;
+    outline: none;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 90px;
+}
+
+@media (max-width: 700px) {
+    .soc-nav {
+        gap: 5px;
+        padding: 9px;
+    }
+
+    .soc-nav a {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
+
+/* ============================================================
+   ADVANCED SOC COMMAND CENTER - VISUAL UPGRADE
+   Frontend styling only. No API or JavaScript changes.
+   ============================================================ */
+
+:root {
+    --soc-bg: #0b1220;
+    --soc-panel: #111c2e;
+    --soc-panel-hover: #17263c;
+    --soc-border: #263750;
+    --soc-text: #e5edf8;
+    --soc-muted: #91a4bd;
+    --soc-blue: #38bdf8;
+    --soc-green: #22c55e;
+    --soc-orange: #f59e0b;
+    --soc-red: #ef4444;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 90px;
+}
+
+body {
+    background: var(--soc-bg);
+    color: var(--soc-text);
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 24px;
+    line-height: 1.55;
+}
+
+h1 {
+    color: #f8fafc;
+    text-align: left;
+    font-size: clamp(24px, 3vw, 34px);
+    font-weight: 750;
+    letter-spacing: -0.7px;
+    margin: 12px 0 18px;
+}
+
+h2, h3, h4 {
+    color: #e5edf8;
+}
+
+p {
+    color: var(--soc-muted);
+}
+
+#fleetOverviewSection {
+    margin: 24px 0;
+    padding: 22px;
+    background: var(--soc-panel);
+    border: 1px solid var(--soc-border);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.fleet-heading h2 {
+    color: #f1f5f9;
+    font-size: 21px;
+}
+
+.fleet-heading p {
+    color: var(--soc-muted);
+}
+
+.fleet-summary-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.fleet-summary-card,
+.fleet-risk-card {
+    min-width: 0;
+    background: linear-gradient(145deg, #17263c, #111c2e);
+    border: 1px solid var(--soc-border);
+    border-radius: 11px;
+    padding: 18px;
+    box-shadow: none;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.fleet-summary-card:hover,
+.fleet-risk-card:hover {
+    transform: translateY(-2px);
+    border-color: #3b82a0;
+}
+
+.fleet-summary-card span,
+.fleet-risk-card span {
+    color: var(--soc-muted);
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.fleet-summary-card strong,
+.fleet-risk-card strong {
+    color: var(--soc-blue);
+    font-size: 29px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+}
+
+.fleet-risk-section {
+    margin-top: 22px;
+    padding: 20px;
+    background: #0e1929;
+    border: 1px solid var(--soc-border);
+    border-radius: 12px;
+}
+
+.fleet-risk-heading h3 {
+    color: #f1f5f9;
+}
+
+.fleet-risk-heading p,
+#fleetRiskUpdated {
+    color: var(--soc-muted);
+}
+
+.fleet-risk-summary {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0;
+}
+
+.fleet-risk-card {
+    background: #17263c;
+}
+
+.fleet-comparison-section,
+#fleetHostDetails {
+    background: var(--soc-panel);
+    border: 1px solid var(--soc-border);
+    box-shadow: none;
+    border-radius: 12px;
+}
+
+#dashboard {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 20px 0;
+}
+
+#dashboard > .card,
+#infrastructure-health > .card {
+    background: var(--soc-panel);
+    border: 1px solid var(--soc-border);
+    border-radius: 11px;
+    box-shadow: none;
+    min-width: 0;
+}
+
+#dashboard .card h2,
+#infrastructure-health .card h3 {
+    color: var(--soc-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#dashboard .card p,
+#infrastructure-health .card p {
+    color: #f1f5f9;
+    font-size: 23px;
+    overflow-wrap: anywhere;
+}
+
+#infrastructure-health {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+#infrastructure-health > h2,
+#infrastructure-health > h3 {
+    grid-column: 1 / -1;
+}
+
+.soc-nav {
+    background: #111c2e;
+    border: 1px solid var(--soc-border);
+}
+
+.soc-nav a {
+    color: #cbd5e1;
+}
+
+button {
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+    filter: brightness(1.12);
+}
+
+table {
+    color: var(--soc-text);
+}
+
+th {
+    background: #1a2a40;
+    color: #dbeafe;
+}
+
+td {
+    border-color: var(--soc-border);
+}
+
+input, select, textarea {
+    background: #101d30;
+    color: var(--soc-text);
+    border: 1px solid var(--soc-border);
+    border-radius: 6px;
+}
+
+::selection {
+    background: #075985;
+    color: white;
+}
+
+@media (max-width: 1000px) {
+    .fleet-summary-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #dashboard {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    body {
+        padding: 12px;
+    }
+
+    #fleetOverviewSection {
+        padding: 14px;
+    }
+
+    .fleet-summary-grid,
+    .fleet-risk-summary,
+    #dashboard,
+    #infrastructure-health {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fleet-risk-section {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 430px) {
+    .fleet-summary-grid,
+    .fleet-risk-summary,
+    #dashboard,
+    #infrastructure-health {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================================
+   SOC TABLE BORDERS AND DIVIDER VISIBILITY FIX
+   ============================================================ */
+
+:root {
+    --soc-border: #40536d;
+}
+
+/* Table borders */
+table {
+    border-collapse: collapse;
+    border-color: var(--soc-border);
+}
+
+th,
+td {
+    border: 1px solid var(--soc-border) !important;
+    padding: 10px 12px;
+}
+
+/* Horizontal separators */
+hr,
+.divider,
+.section-divider {
+    border: 0;
+    border-top: 1px solid var(--soc-border);
+}
+
+/* Card outlines */
+.card,
+.chart-container,
+.fleet-summary-card {
+    border: 1px solid var(--soc-border);
+}
+
+/* Table header visibility */
+th {
+    background: #1b2a40;
+    color: #e5edf8;
+}
+
+/* Subtle row separation */
+tbody tr {
+    border-bottom: 1px solid var(--soc-border);
+}
+
+tbody tr:hover {
+    background: #17263c;
+}
+
+
+/* TEMPORARY: HIGH-CONTRAST LINE VISIBILITY TEST */
+
+table,
+th,
+td {
+    border: 2px solid #ffffff !important;
+}
+
+.card,
+.chart-container {
+    border: 2px solid #38bdf8 !important;
+}
+
+hr {
+    border: 0 !important;
+    border-top: 2px solid #ffffff !important;
+}
+
+
+/* ============================================================
+   SOC THEME - NORMAL TEXT VISIBILITY FIX
+   ============================================================ */
+
+body {
+    color: #e5edf8 !important;
+}
+
+h1, h2, h3, h4, h5, h6,
+p, label, span, strong, small,
+li, td, th {
+    color: #e5edf8;
+}
+
+.card,
+.chart-container,
+section,
+.panel {
+    color: #e5edf8;
+}
+
+table {
+    color: #e5edf8;
+}
+
+th {
+    color: #ffffff !important;
+    background-color: #1b2a40 !important;
+}
+
+td {
+    color: #dbeafe !important;
+}
+
+input, select, textarea {
+    color: #e5edf8 !important;
+    background-color: #17263c !important;
+}
+
+a {
+    color: #38bdf8;
+}
+
+
+/* ============================================================
+   PERMANENT GLOBAL SOC DARK THEME VISIBILITY FIX
+   ============================================================ */
+
+/* All project cards and sections */
+.card,
+section.card,
+.panel,
+.delivery-health-card {
+    background: #111c2e !important;
+    color: #e5edf8 !important;
+    border: 1px solid #40536d !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+
+/* All headings */
+.card h1,
+.card h2,
+.card h3,
+.card h4,
+section h1,
+section h2,
+section h3,
+section h4 {
+    color: #f1f5f9 !important;
+}
+
+/* Normal text and descriptions */
+.card p,
+.card li,
+.card label,
+.card td,
+.card th,
+.card span,
+.card strong,
+section p,
+section li {
+    color: #dbeafe;
+}
+
+/* Metric values */
+.delivery-health-card p {
+    color: #38bdf8 !important;
+    font-size: 26px;
+    font-weight: 750;
+}
+
+/* Metric card headings */
+.delivery-health-card h3 {
+    color: #91a4bd !important;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    color: #e5edf8 !important;
+}
+
+thead th {
+    background: #1b2a40 !important;
+    color: #ffffff !important;
+    border: 1px solid #526782 !important;
+}
+
+tbody td {
+    background: #111c2e;
+    color: #dbeafe !important;
+    border: 1px solid #40536d !important;
+}
+
+tbody tr:hover td {
+    background: #20334d !important;
+}
+
+/* Horizontal divider lines */
+hr,
+.divider,
+.section-divider {
+    border: 0 !important;
+    border-top: 1px solid #526782 !important;
+}
+
+/* Form controls */
+input,
+select,
+textarea {
+    background: #17263c !important;
+    color: #ffffff !important;
+    border: 1px solid #526782 !important;
+}
+
+/* Muted descriptions */
+.card .muted,
+.card .description {
+    color: #a9bad0 !important;
+}
+
+/* Preserve semantic security status colors */
+.risk-level-low { color: #22c55e !important; }
+.risk-level-medium { color: #f59e0b !important; }
+.risk-level-high { color: #fb923c !important; }
+.risk-level-critical { color: #ef4444 !important; }
+
+
+/* SERVER HOST CARDS - DARK SOC THEME */
+.fleet-host-card {
+    background: #111c2e !important;
+    color: #e5edf8 !important;
+    border: 1px solid #40536d !important;
+}
+
+.fleet-host-title h3 {
+    color: #38bdf8 !important;
+}
+
+.fleet-host-title p,
+.fleet-host-footer {
+    color: #b8c7da !important;
+}
+
+.fleet-metrics div {
+    background: #17263c !important;
+    border: 1px solid #40536d !important;
+    border-radius: 8px;
+}
+
+.fleet-metrics span,
+.fleet-metrics p {
+    color: #cbd5e1 !important;
+}
+
+.fleet-metrics strong,
+.fleet-metrics b {
+    color: #38bdf8 !important;
+}
+
+.fleet-host-footer {
+    border-top: 1px solid #526782 !important;
+}
+
+.fleet-comparison-section {
+    background: #111c2e !important;
+}
+
+.fleet-comparison-heading h3 {
+    color: #f1f5f9 !important;
+}
+
+.fleet-ranking-item {
+    background: #17263c !important;
+    color: #e5edf8 !important;
+    border: 1px solid #40536d;
+}
+
+
+/* SECURITY SEVERITY COUNTS - DARK SOC FIX */
+.fleet-risk-distribution-item {
+    background: #17263c !important;
+    border: 1px solid #40536d !important;
+    border-left: 4px solid #38bdf8 !important;
+    border-radius: 10px;
+    padding: 16px !important;
+    min-height: 85px;
+}
+
+.fleet-risk-distribution-item span {
+    display: block;
+    color: #cbd5e1 !important;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.fleet-risk-distribution-item strong {
+    display: block;
+    color: #ffffff !important;
+    font-size: 32px !important;
+    font-weight: 800 !important;
+    line-height: 1.4;
+    margin-top: 8px;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+/* Individual severity indicators */
+.fleet-risk-distribution-item.risk-border-low {
+    border-left-color: #22c55e !important;
+}
+
+.fleet-risk-distribution-item.risk-border-medium {
+    border-left-color: #f59e0b !important;
+}
+
+.fleet-risk-distribution-item.risk-border-high {
+    border-left-color: #fb923c !important;
+}
+
+.fleet-risk-distribution-item.risk-border-critical {
+    border-left-color: #ef4444 !important;
+}
+
+/* CPU, MEMORY AND DISK CHART - FULL LABEL VISIBILITY */
+.chart-container {
+    height: 320px !important;
+    min-height: 320px !important;
+    overflow: visible !important;
+    background: #111c2e !important;
+    border: 1px solid #40536d !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+}
+
+.chart-container h2,
+.chart-container h3 {
+    color: #f1f5f9 !important;
+    margin-bottom: 12px !important;
+}
+
+.chart-container canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 230px !important;
+    max-height: none !important;
+}
+
+@media (max-width: 700px) {
+    .chart-container {
+        height: 290px !important;
+        min-height: 290px !important;
+    }
+
+    .chart-container canvas {
+        height: 210px !important;
+    }
+}
