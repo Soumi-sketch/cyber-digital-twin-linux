@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+backups/
+*.bak
+*.bak-*
+*.phase*_backup
+*.before_*
